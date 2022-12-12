@@ -9,7 +9,7 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/POST", cuttool.MakeURLShorter)
+	mux.HandleFunc("/POST/", cuttool.MakeURLShorter)
 	mux.HandleFunc("/GET/", urlgiver.GetOrigURL)
 
 	log.Fatal(http.ListenAndServe("localhost:8080", mux))
