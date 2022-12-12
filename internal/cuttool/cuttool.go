@@ -5,11 +5,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
 )
 
 var idCount = 0
-var URLStorage = make(map[int]string)
+var URLStorage = make(map[int][]byte)
 
 func MakeURLShorter(w http.ResponseWriter, r *http.Request) {
 
@@ -19,26 +19,28 @@ func MakeURLShorter(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("Ошибка: ", err)
 		return
 	}
+	//Здесь будет какая-то логика по сокращению ссылки
+
 	urlString := fmt.Sprint(respBody)
+	URLLink, err := url.Parse(urlString)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+	partOfURL := URLLink.Path
 
 	//Здесь будет какая-то логика по сокращению ссылки
 
-	//
-
+	//Fill map with id and full link
 	idCount++
-	URLStorage[idCount] = urlString
+	URLStorage[idCount] = respBody
 
+	//Answer to client with shortened link
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte("Сокращенная строка - " + urlString))
+	_, err = w.Write([]byte(partOfURL))
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		log.Fatal("Ошибка: ", err)
 		return
-	}
-
-	_, err = fmt.Fprint(os.Stdout, urlString)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
 	}
 }
