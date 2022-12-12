@@ -1,21 +1,16 @@
 package main
 
 import (
+	"github.com/rltsv/internal/cuttool"
+	"github.com/rltsv/internal/urlgiver"
+	"log"
 	"net/http"
 )
 
-func MethodPost(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "POST" {
-
-	}
-}
-
 func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/POST", cuttool.MakeUrlShorter)
+	mux.HandleFunc("/GET/", urlgiver.GetOrigURL)
 
-	h1 := http.HandlerFunc(MethodPost)
-
-	http.HandleFunc("/", h1)
-
-	http.ListenAndServe("localhost:8080", nil)
+	log.Fatal(http.ListenAndServe("localhost:8080", mux))
 }
