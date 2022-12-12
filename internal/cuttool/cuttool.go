@@ -35,7 +35,6 @@ func MakeURLShorter(w http.ResponseWriter, r *http.Request) {
 	URLStorage[idCount] = respBody
 
 	//Answer to client with shortened link
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(201)
 	_, err = w.Write([]byte(partOfURL))
 	if err != nil {
