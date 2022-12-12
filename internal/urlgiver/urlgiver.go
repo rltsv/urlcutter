@@ -14,16 +14,16 @@ func GetOrigURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, idPart, _ := strings.Cut(idValue, "GET/")
-	intIdPart, err := strconv.Atoi(idPart)
+	intIDPart, err := strconv.Atoi(idPart)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 
-	if _, ok := cuttool.UrlStorage[intIdPart]; !ok {
+	if _, ok := cuttool.URLStorage[intIDPart]; !ok {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
-	w.Header().Set("Content-Location", cuttool.UrlStorage[intIdPart])
+	w.Header().Set("Content-Location", cuttool.URLStorage[intIDPart])
 	w.WriteHeader(http.StatusTemporaryRedirect)
 
 }

@@ -9,9 +9,9 @@ import (
 )
 
 var idCount = 0
-var UrlStorage = make(map[int]string)
+var URLStorage = make(map[int]string)
 
-func MakeUrlShorter(w http.ResponseWriter, r *http.Request) {
+func MakeURLShorter(w http.ResponseWriter, r *http.Request) {
 
 	respBody, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -26,7 +26,7 @@ func MakeUrlShorter(w http.ResponseWriter, r *http.Request) {
 	//
 
 	idCount++
-	UrlStorage[idCount] = urlString
+	URLStorage[idCount] = urlString
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
