@@ -28,7 +28,7 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 	mux.Unlock()
 
 	//здесь сокращаем нашу ссылку, пока что будем делать просто порядковые номера: 1, 2...
-	var LinkAfterHashFunction string = strconv.Itoa(idCount)
+	var LinkAfterHashFunction = strconv.Itoa(idCount)
 
 	//отвечаем клиенту в виде сокращенной ссылки и статус кодом
 	w.WriteHeader(201)
