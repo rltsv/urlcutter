@@ -63,7 +63,7 @@ func GiveOriginalLinkToRequest(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/POST/", MakeShortLink)
+	mux.HandleFunc("/", MakeShortLink)
 	mux.HandleFunc("/GET/", GiveOriginalLinkToRequest)
 
 	log.Fatal(http.ListenAndServe("localhost:8080", mux))
