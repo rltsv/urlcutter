@@ -63,13 +63,9 @@ var mux sync.Mutex
 
 func MapMethodToFunction(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		idValue := r.URL.Path
-		if idValue == "" {
-			http.Error(w, "", http.StatusBadRequest)
-			return
-		}
-		_, idPart, _ := strings.Cut(idValue, "/")
-		intIDPart, err := strconv.Atoi(idPart)
+		idValue := strings.TrimLeft(r.URL.Path, "/")
+
+		intIDPart, err := strconv.Atoi(idValue)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
