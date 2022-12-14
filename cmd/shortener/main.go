@@ -64,14 +64,18 @@ var mux sync.Mutex
 func MapMethodToFunction(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		idValue := strings.TrimLeft(r.URL.Path, "/")
-
+		if idValue == "" {
+			http.Error(w, "", 400)
+			return
+		}
 		intIDPart, err := strconv.Atoi(idValue)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
 
 		if _, ok := URLStorage[intIDPart]; !ok {
-			http.Error(w, "", http.StatusBadRequest)
+			http.Error(w, err.Error(), 400)
+			return
 		}
 
 		w.Header().Set("Content-Location", string(URLStorage[intIDPart]))
