@@ -50,12 +50,9 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 		URLStorage[idCount] = respBody
 		mux.Unlock()
 
-		//здесь сокращаем нашу ссылку, пока что будем делать просто порядковые номера: 1, 2...
-		var LinkAfterHashFunction = strconv.Itoa(idCount)
-
 		//отвечаем клиенту в виде сокращенной ссылки и статус кодом
 		w.WriteHeader(201)
-		_, err = w.Write([]byte(LinkAfterHashFunction))
+		_, err = w.Write([]byte(fmt.Sprintf("http://localhost:8080/GET/%d", idCount)))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			log.Fatal("Ошибка: ", err)
