@@ -34,7 +34,7 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for key, val := range URLStorage {
-			if bytes.Compare(val, respBody) == 0 {
+			if bytes.Equal(val, respBody) == true {
 				w.WriteHeader(400)
 				_, err = w.Write([]byte(fmt.Sprint("Такая ссылка уже есть в базе - ", key)))
 				if err != nil {
@@ -69,7 +69,7 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 
 func GiveOriginalLinkToRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		idValue := strings.TrimLeft(r.URL.Path, "/GET/")
+		idValue := strings.TrimPrefix(r.URL.Path, "/GET/")
 		if idValue == "" {
 			http.Error(w, "Уточните запрос.", 400)
 			return
