@@ -71,6 +71,12 @@ func MapMethodToFunction(w http.ResponseWriter, r *http.Request) {
 		intIDPart, err := strconv.Atoi(idValue)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		if len(URLStorage) == 0 {
+			http.Error(w, "По данному id, ничего нет. Уточните запрос.", 400)
+			return
 		}
 
 		if _, ok := URLStorage[intIDPart]; !ok {
