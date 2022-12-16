@@ -52,7 +52,7 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 
 		//отвечаем клиенту в виде сокращенной ссылки и статус кодом
 		w.WriteHeader(201)
-		_, err = w.Write([]byte(fmt.Sprintf("http://localhost:8080/GET/%d", idCount)))
+		_, err = w.Write([]byte(fmt.Sprint(idCount)))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			log.Fatal("Ошибка: ", err)
@@ -91,6 +91,7 @@ func GiveOriginalLinkToRequest(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Location", string(URLStorage[intIDPart]))
 		w.WriteHeader(http.StatusTemporaryRedirect)
+
 	} else {
 		http.Error(w, "Ошибка запроса!", 400)
 	}
