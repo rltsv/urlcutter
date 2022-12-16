@@ -15,7 +15,8 @@ var idCount = 0
 var URLStorage = make(map[int][]byte)
 var mux sync.Mutex
 
-func MakeShortLink(w http.ResponseWriter, r *http.Request) {
+func HeadFunction(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == http.MethodPost {
 		if strings.TrimLeft(r.URL.Path, "/") != "" {
 			http.Error(w, "Некорректный запрос.", 400)
@@ -58,15 +59,10 @@ func MakeShortLink(w http.ResponseWriter, r *http.Request) {
 			log.Fatal("Ошибка: ", err)
 			return
 		}
-	} else {
-		http.Error(w, "Ошибка запроса!", 400)
-	}
 
-}
+	} else if r.Method == http.MethodGet {
 
-func GiveOriginalLinkToRequest(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		idValue := strings.TrimPrefix(r.URL.Path, "/GET/")
+		idValue := strings.TrimPrefix(r.URL.Path, "/")
 		if idValue == "" {
 			http.Error(w, "Уточните запрос.", 400)
 			return
@@ -100,9 +96,7 @@ func GiveOriginalLinkToRequest(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", MakeShortLink)
-	mux.HandleFunc("/GET/", GiveOriginalLinkToRequest)
+	http.HandleFunc("/", HeadFunction)
 
-	log.Fatal(http.ListenAndServe("localhost:8080", mux))
+	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
