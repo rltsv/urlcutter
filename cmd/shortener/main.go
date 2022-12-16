@@ -53,7 +53,7 @@ func HeadFunction(w http.ResponseWriter, r *http.Request) {
 
 		//отвечаем клиенту в виде сокращенной ссылки и статус кодом
 		w.WriteHeader(201)
-		_, err = w.Write([]byte(fmt.Sprint(idCount)))
+		_, err = w.Write([]byte(fmt.Sprintf("http://localhost:8080/%d", idCount)))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			log.Fatal("Ошибка: ", err)
