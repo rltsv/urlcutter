@@ -85,7 +85,7 @@ func HeadFunction(w http.ResponseWriter, r *http.Request) {
 		}
 		mux.Unlock()
 
-		w.Header().Set("Content-Location", string(URLStorage[intIDPart]))
+		w.Header().Set("Location", string(URLStorage[intIDPart]))
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
 	} else {
