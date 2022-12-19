@@ -1,3 +1,3 @@
-module github.com/rltsv
+module github.com/rltsv/urlcutter
 
 go 1.19
