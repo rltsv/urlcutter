@@ -17,7 +17,9 @@ var mux sync.Mutex
 
 func HeadFunction(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodPost {
+	switch r.Method {
+
+	case http.MethodPost:
 		if strings.TrimLeft(r.URL.Path, "/") != "" {
 			http.Error(w, "Некорректный запрос.", 400)
 			return
@@ -60,7 +62,7 @@ func HeadFunction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-	} else if r.Method == http.MethodGet {
+	case http.MethodGet:
 
 		idValue := strings.TrimPrefix(r.URL.Path, "/")
 		if idValue == "" {
@@ -85,10 +87,10 @@ func HeadFunction(w http.ResponseWriter, r *http.Request) {
 		}
 		mux.Unlock()
 
-		w.Header().Set("Content-Location", string(URLStorage[intIDPart]))
+		w.Header().Set("Location", string(URLStorage[intIDPart]))
 		w.WriteHeader(http.StatusTemporaryRedirect)
 
-	} else {
+	default:
 		http.Error(w, "Ошибка запроса!", 400)
 	}
 
@@ -97,6 +99,5 @@ func HeadFunction(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	http.HandleFunc("/", HeadFunction)
-
 	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
