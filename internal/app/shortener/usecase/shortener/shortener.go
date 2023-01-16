@@ -14,13 +14,13 @@ func NewUsecase(shortenerRepo repository.ShortenerRepo) *Usecase {
 	return &Usecase{repo: shortenerRepo}
 }
 
-func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link string, err error) {
+func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link string) {
 
 	IDCount := u.repo.SaveLink(ctx, longLink)
 
 	shortLink := fmt.Sprintf("http://localhost:8080/%d", IDCount)
 
-	return shortLink, nil
+	return shortLink
 }
 
 func (u *Usecase) GetLinkByID(ctx context.Context, id int) (origLink string, err error) {

@@ -26,28 +26,28 @@ func (hs *HandlerShortener) HeadHandler(w http.ResponseWriter, r *http.Request) 
 
 	if r.Method == http.MethodPost {
 		if strings.TrimLeft(r.URL.Path, "/") != "" {
-			http.Error(w, "Некорректный запрос.", 400)
+			http.Error(w, "specify the request", 400)
 			return
 		}
 
 		respBody, err := io.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			http.Error(w, "specify the request", 400)
 			return
 		}
 
 		if len(respBody) == 0 {
-			http.Error(w, "Мне нечего сокращать, уточните ссылку!", 400)
+			http.Error(w, "where is nothing to short, check body", 400)
 			return
 		}
 
-		shortLink, err := hs.useCase.CreateShortLink(ctx, string(respBody))
+		shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
 
 		w.WriteHeader(201)
 		_, err = w.Write([]byte(shortLink))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
-			log.Fatal("error: ", err)
+			log.Fatal("", err)
 			return
 		}
 
@@ -62,13 +62,12 @@ func (hs *HandlerShortener) HeadHandler(w http.ResponseWriter, r *http.Request) 
 		id, err := strconv.Atoi(idValue)
 		if err != nil {
 			http.Error(w, "specify the request", 400)
-			log.Print(err)
 			return
 		}
 
 		origLink, err := hs.useCase.GetLinkByID(ctx, id)
 		if err == repository.ErrLinkNotFound {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, "there is no any link by this id", 400)
 		}
 
 		w.Header().Set("Location", origLink)
