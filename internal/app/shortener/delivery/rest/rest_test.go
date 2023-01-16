@@ -55,6 +55,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			h.ServeHTTP(w, r)
 
 			res := w.Result()
+			defer res.Body.Close()
 
 			resBody, err := io.ReadAll(res.Body)
 			if err != nil {
@@ -116,9 +117,10 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 			h.ServeHTTP(recPost, requestPost)
 			h.ServeHTTP(recGet, requestGet)
 
-			result := recGet.Result()
+			res := recGet.Result()
+			defer res.Body.Close()
 
-			assert.Equal(t, tc.want.code, result.StatusCode)
+			assert.Equal(t, tc.want.code, res.StatusCode)
 
 		})
 	}
