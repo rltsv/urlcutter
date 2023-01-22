@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	repo := repository.NewLinksRepository()
 	repoUsecase := shortener.NewUsecase(repo)
 	handler := rest.NewHandlerShortener(*repoUsecase)

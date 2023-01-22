@@ -58,7 +58,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-			defer res.Body.Close()
+			res.Body.Close()
 
 			resBody, err := io.ReadAll(res.Body)
 			if err != nil {
@@ -120,6 +120,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
+			res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
 			assert.Equal(t, tc.want.contentField, res.Header.Get("Location"))
