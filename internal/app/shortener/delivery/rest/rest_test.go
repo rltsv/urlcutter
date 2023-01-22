@@ -14,9 +14,8 @@ import (
 
 func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 	type request struct {
-		URL    string
-		patURL string
-		body   string
+		URL  string
+		body string
 	}
 	type want struct {
 		body string
