@@ -2,79 +2,64 @@ package rest
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type HandlerShortener struct {
 	useCase shortener.Usecase
+	*chi.Mux
 }
 
-func NewHandlerShortener(useCase shortener.Usecase) *HandlerShortener {
+func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
 	return &HandlerShortener{
-		useCase: useCase,
+		useCase: shortenerUseCase,
+		Mux:     chi.NewMux(),
 	}
 }
 
-func (hs *HandlerShortener) HeadHandler(w http.ResponseWriter, r *http.Request) {
+func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
+
 	ctx := context.Background()
 
-	if r.Method == http.MethodPost {
-		if strings.TrimLeft(r.URL.Path, "/") != "" {
-			http.Error(w, "specify the request", 400)
-			return
-		}
-
-		respBody, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "specify the request", 400)
-			return
-		}
-
-		if len(respBody) == 0 {
-			http.Error(w, "where is nothing to short, check body", 400)
-			return
-		}
-
-		shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
-
-		w.WriteHeader(201)
-		_, err = w.Write([]byte(shortLink))
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			log.Fatal("", err)
-			return
-		}
-
-	} else if r.Method == http.MethodGet {
-
-		idValue := strings.TrimPrefix(r.URL.Path, "/")
-
-		if idValue == "" {
-			http.Error(w, "specify the request", 400)
-			return
-		}
-		id, err := strconv.Atoi(idValue)
-		if err != nil {
-			http.Error(w, "specify the request", 400)
-			return
-		}
-
-		origLink, err := hs.useCase.GetLinkByID(ctx, id)
-		if err == repository.ErrLinkNotFound {
-			http.Error(w, "there is no any link by this id", 400)
-		}
-
-		w.Header().Set("Location", origLink)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-
-	} else {
-		http.Error(w, "request error", 400)
+	respBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		http.Error(c.Writer, "specify the request", 400)
+		return
 	}
 
+	if len(respBody) == 0 {
+		http.Error(c.Writer, "where is nothing to short, check body", 400)
+		return
+	}
+
+	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
+
+	c.Writer.WriteHeader(201)
+	_, err = c.Writer.Write([]byte(shortLink))
+	if err != nil {
+		http.Error(c.Writer, err.Error(), 500)
+		log.Fatal("", err)
+		return
+	}
+}
+
+func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
+	ctx := context.Background()
+
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	origLink, err := hs.useCase.GetLinkByID(ctx, id)
+	if err == repository.ErrLinkNotFound {
+		http.Error(c.Writer, "there is no any link by this id", 400)
+	}
+
+	c.Writer.Header().Set("Location", origLink)
+	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }

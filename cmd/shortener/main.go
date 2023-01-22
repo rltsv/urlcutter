@@ -9,11 +9,12 @@ import (
 )
 
 func main() {
+
 	repo := repository.NewLinksRepository()
 	repoUsecase := shortener.NewUsecase(repo)
 	handler := rest.NewHandlerShortener(*repoUsecase)
 
-	http.HandleFunc("/", handler.HeadHandler)
+	router := rest.SetupRouter(handler)
 
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
