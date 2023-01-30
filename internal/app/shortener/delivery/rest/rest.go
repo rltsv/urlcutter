@@ -1,9 +1,7 @@
 package rest
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/go-chi/chi/v5"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"io"
@@ -14,21 +12,21 @@ import (
 
 type HandlerShortener struct {
 	useCase shortener.Usecase
-	*chi.Mux
 }
 
 func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
 	return &HandlerShortener{
 		useCase: shortenerUseCase,
-		Mux:     chi.NewMux(),
 	}
 }
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	respBody, err := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+
 	if err != nil {
 		http.Error(c.Writer, "specify the request", 400)
 		return
@@ -51,7 +49,8 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
-	ctx := context.Background()
+
+	ctx := c.Request.Context()
 
 	id, _ := strconv.Atoi(c.Param("id"))
 
