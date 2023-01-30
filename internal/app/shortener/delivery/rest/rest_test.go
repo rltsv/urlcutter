@@ -107,7 +107,8 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 					1: "http://postman-echo.com/get",
 				},
 				IDCount: 1,
-				Mux:     &sync.Mutex{},
+				Mutex:   new(sync.Mutex),
+				RwMutex: &sync.RWMutex{},
 			}
 			shortenerUsecase := shortener.NewUsecase(&shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)

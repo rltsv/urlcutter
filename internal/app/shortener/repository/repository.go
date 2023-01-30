@@ -20,30 +20,30 @@ type ShortenerRepo interface {
 type LinksRepository struct {
 	Storage map[int]string
 	IDCount int
-	mutex   *sync.Mutex
-	rwMutex *sync.RWMutex
+	Mutex   *sync.Mutex
+	RwMutex *sync.RWMutex
 }
 
 func NewLinksRepository() *LinksRepository {
 	return &LinksRepository{
 		Storage: make(map[int]string),
 		IDCount: 0,
-		mutex:   new(sync.Mutex),
-		rwMutex: new(sync.RWMutex),
+		Mutex:   new(sync.Mutex),
+		RwMutex: new(sync.RWMutex),
 	}
 }
 func (l *LinksRepository) SaveLink(ctx context.Context, longLink string) (IDCount int) {
 
-	l.rwMutex.Lock()
-	defer l.rwMutex.Unlock()
+	l.RwMutex.Lock()
+	defer l.RwMutex.Unlock()
 	for key, val := range l.Storage {
 		if strings.EqualFold(val, longLink) {
 			return key
 		}
 	}
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
+	l.Mutex.Lock()
+	defer l.Mutex.Unlock()
 	l.IDCount++
 	l.Storage[l.IDCount] = longLink
 	return l.IDCount
@@ -51,8 +51,8 @@ func (l *LinksRepository) SaveLink(ctx context.Context, longLink string) (IDCoun
 }
 
 func (l *LinksRepository) GetLink(ctx context.Context, id int) (longLink string, err error) {
-	l.rwMutex.RLock()
-	defer l.rwMutex.RUnlock()
+	l.RwMutex.RLock()
+	defer l.RwMutex.RUnlock()
 
 	if len(l.Storage) == 0 {
 		return "", ErrStorageIsEmpty
