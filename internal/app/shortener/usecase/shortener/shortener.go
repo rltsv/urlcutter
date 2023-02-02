@@ -16,7 +16,7 @@ func NewUsecase(shortenerRepo repository.ShortenerRepo) *Usecase {
 
 func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link string) {
 
-	IDCount := u.repo.SaveLink(ctx, longLink)
+	IDCount := u.repo.CreateLink(ctx, longLink)
 
 	shortLink := fmt.Sprintf("http://localhost:8080/%d", IDCount)
 
@@ -25,10 +25,8 @@ func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link st
 
 func (u *Usecase) GetLinkByID(ctx context.Context, id int) (origLink string, err error) {
 
-	origLink, err = u.repo.GetLink(ctx, id)
-	if err == repository.ErrStorageIsEmpty {
-		return "", err
-	} else if err == repository.ErrLinkNotFound {
+	origLink, err = u.repo.GetLinkByID(ctx, id)
+	if err == repository.ErrLinkNotFound {
 		return "", err
 	}
 

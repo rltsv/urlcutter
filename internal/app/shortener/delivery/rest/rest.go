@@ -25,14 +25,14 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	respBody, err := io.ReadAll(c.Request.Body)
-	defer c.Request.Body.Close()
-
 	if err != nil {
+		defer c.Request.Body.Close()
 		http.Error(c.Writer, "specify the request", 400)
 		return
 	}
 
 	if len(respBody) == 0 {
+		defer c.Request.Body.Close()
 		http.Error(c.Writer, "where is nothing to short, check body", 400)
 		return
 	}
