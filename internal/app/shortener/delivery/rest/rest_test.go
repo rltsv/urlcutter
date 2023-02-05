@@ -1,18 +1,19 @@
 package rest
 
 import (
+	"bytes"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 )
 
 func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
+
 	type request struct {
 		URL  string
 		body string
@@ -30,12 +31,12 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 		{
 			name: "test method post with correct initial data",
 			request: request{
-				URL:  "http://localhost:8080/",
-				body: "http://postman-echo.com/get",
+				URL:  "/api/shorten",
+				body: `{"url":"http://postman-echo.com/get"}`,
 			},
 			want: want{
-				code: 201,
-				body: "http://localhost:8080/1",
+				code: http.StatusOK,
+				body: `{"result":"http://localhost:8080/1"}`,
 			},
 		},
 	}
@@ -47,9 +48,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
-			myReader := strings.NewReader(tc.request.body)
-
-			r := httptest.NewRequest(http.MethodPost, tc.request.URL, myReader)
+			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
 			w := httptest.NewRecorder()
 
 			router := SetupRouter(handler)
@@ -57,15 +56,13 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-			res.Body.Close()
 
-			resBody, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
+			respBody, err := io.ReadAll(res.Body)
+			assert.NoError(t, err)
+			defer res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
-			assert.Equal(t, tc.want.body, string(resBody))
+			assert.Equal(t, tc.want.body, string(respBody))
 
 		})
 	}
@@ -119,7 +116,6 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-			res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
 			assert.Equal(t, tc.want.contentField, res.Header.Get("Location"))

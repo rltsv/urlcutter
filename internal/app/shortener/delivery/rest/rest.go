@@ -1,11 +1,12 @@
 package rest
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -21,29 +22,37 @@ func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
 }
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
-
 	ctx := c.Request.Context()
 
-	respBody, err := io.ReadAll(c.Request.Body)
+	rawValue, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		http.Error(c.Writer, "specify the request", 400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 	defer c.Request.Body.Close()
 
-	if len(respBody) == 0 {
-		http.Error(c.Writer, "where is nothing to short, check body", 400)
+	ValueIn := &entity.InputData{}
+	var shortLink string
+
+	if err := json.Unmarshal(rawValue, &ValueIn); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
+	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.Url)
 
-	c.Writer.WriteHeader(201)
-	_, err = c.Writer.Write([]byte(shortLink))
+	ValueOut := entity.OutputData{
+		Response: shortLink,
+	}
+
+	rawShortLink, err := json.Marshal(ValueOut)
 	if err != nil {
-		http.Error(c.Writer, err.Error(), 500)
-		log.Fatal("", err)
-		return
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}
+
+	_, err = c.Writer.Write(rawShortLink)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 }
 
@@ -55,9 +64,9 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 
 	origLink, err := hs.useCase.GetLinkByID(ctx, id)
 	if err == repository.ErrLinkNotFound {
-		http.Error(c.Writer, "there is no any link by this id", 400)
+		c.AbortWithStatus(http.StatusBadRequest)
+		c.Error(err)
+	} else {
+		c.Redirect(http.StatusTemporaryRedirect, origLink)
 	}
-
-	c.Writer.Header().Set("Location", origLink)
-	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }
