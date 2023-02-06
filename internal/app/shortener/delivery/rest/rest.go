@@ -38,7 +38,7 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	}
 
 	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
-
+	c.Writer.WriteHeader(http.StatusCreated)
 	_, err = c.Writer.Write([]byte(shortLink))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -75,6 +75,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 
+	c.Writer.WriteHeader(http.StatusCreated)
 	_, err = c.Writer.Write(rawShortLink)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)

@@ -116,6 +116,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
+			defer res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
 			assert.Equal(t, tc.want.contentField, res.Header.Get("Location"))
