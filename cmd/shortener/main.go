@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/rest"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
@@ -9,11 +10,16 @@ import (
 )
 
 func main() {
+	err := config.InitConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	repo := repository.NewLinksRepository()
 	repoUsecase := shortener.NewUsecase(repo)
 	handler := rest.NewHandlerShortener(*repoUsecase)
 
 	router := rest.SetupRouter(handler)
 
-	log.Fatal(http.ListenAndServe("localhost:8080", router))
+	log.Fatal(http.ListenAndServe(config.Cfg.ServerAddress, router))
 }

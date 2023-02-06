@@ -3,6 +3,7 @@ package shortener
 import (
 	"context"
 	"fmt"
+	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 )
 
@@ -18,7 +19,7 @@ func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link st
 
 	IDCount := u.repo.CreateLink(ctx, longLink)
 
-	shortLink := fmt.Sprintf("http://localhost:8080/%d", IDCount)
+	shortLink := fmt.Sprintf("%s%d", config.Cfg.BaseURL, IDCount)
 
 	return shortLink
 }
