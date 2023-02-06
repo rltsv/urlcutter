@@ -2,6 +2,7 @@ package rest
 
 import (
 	"bytes"
+	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"github.com/stretchr/testify/assert"
@@ -47,6 +48,9 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			shortenerRepo := repository.NewLinksRepository()
 			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)
+
+			err := config.InitConfig()
+			assert.NoError(t, err)
 
 			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
 			w := httptest.NewRecorder()
