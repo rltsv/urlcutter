@@ -1,7 +1,7 @@
 package entity
 
 type InputData struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 type OutputData struct {

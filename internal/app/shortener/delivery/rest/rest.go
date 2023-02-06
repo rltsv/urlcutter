@@ -64,7 +64,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		return
 	}
 
-	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.Url)
+	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
 
 	ValueOut := entity.OutputData{
 		Response: shortLink,

@@ -35,7 +35,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 				body: `{"url":"http://postman-echo.com/get"}`,
 			},
 			want: want{
-				code: http.StatusOK,
+				code: http.StatusCreated,
 				body: `{"result":"http://localhost:8080/1"}`,
 			},
 		},
