@@ -21,6 +21,6 @@ func main() {
 
 	router := rest.SetupRouter(handler)
 
-	log.Printf("app starts listen on port: %s", config.Cfg.ServerAddress)
-	log.Fatal(http.ListenAndServe(":"+config.Cfg.ServerAddress, router))
+	log.Printf("app starts listen on : %s", config.Cfg.ServerAddress)
+	log.Fatal(http.ListenAndServe(config.Cfg.ServerAddress, router))
 }
