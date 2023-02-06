@@ -7,7 +7,8 @@ import (
 func SetupRouter(handler *HandlerShortener) *gin.Engine {
 	router := gin.Default()
 
-	router.POST("/api/shorten", handler.CreateShortLink)
+	router.POST("/", handler.CreateShortLink)
+	router.POST("/api/shorten", handler.CreateShortLinkViaJSON)
 	router.GET("/:id", handler.GetLinkByID)
 
 	return router

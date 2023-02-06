@@ -22,6 +22,31 @@ func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
 }
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
+
+	ctx := c.Request.Context()
+
+	respBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	defer c.Request.Body.Close()
+
+	if len(respBody) == 0 {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
+
+	_, err = c.Writer.Write([]byte(shortLink))
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	rawValue, err := io.ReadAll(c.Request.Body)
