@@ -75,6 +75,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 
+	c.Writer.Header().Set("content-type", "application/json")
 	c.Writer.WriteHeader(http.StatusCreated)
 	_, err = c.Writer.Write(rawShortLink)
 	if err != nil {
