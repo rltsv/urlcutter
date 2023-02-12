@@ -19,7 +19,7 @@ func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link st
 
 	IDCount := u.repo.CreateLink(ctx, longLink)
 
-	shortLink := fmt.Sprintf("https://%s/%d", config.Cfg.BaseURL, IDCount)
+	shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
 
 	return shortLink
 }

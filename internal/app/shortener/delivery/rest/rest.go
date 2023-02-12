@@ -7,7 +7,6 @@ import (
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -87,10 +86,6 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 
 	ctx := c.Request.Context()
-
-	log.Println(c.Request.Header)
-	log.Println(c.Request.Host)
-	log.Println(c.Request.URL)
 
 	id, _ := strconv.Atoi(c.Param("id"))
 
