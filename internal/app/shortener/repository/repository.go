@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"sync"
 )
@@ -41,6 +42,8 @@ func (l *LinksRepository) CreateLink(ctx context.Context, longLink string) (id i
 	defer l.Mux.Unlock()
 	l.IDCount++
 	l.Storage[l.IDCount] = longLink
+
+	log.Print(l.Storage)
 
 	return l.IDCount
 }
