@@ -15,9 +15,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	repo := repository.NewLinksRepository()
-	repoUsecase := shortener.NewUsecase(repo)
-	handler := rest.NewHandlerShortener(*repoUsecase)
+	shortenerStorage := repository.NewStorage()
+	shortenerUsecase := shortener.NewUsecase(*shortenerStorage)
+	handler := rest.NewHandlerShortener(*shortenerUsecase)
 
 	router := rest.SetupRouter(handler)
 

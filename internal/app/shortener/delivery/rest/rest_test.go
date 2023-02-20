@@ -3,7 +3,6 @@ package rest
 import (
 	"bytes"
 	"github.com/rltsv/urlcutter/internal/app/config"
-	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -45,7 +44,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
-			shortenerRepo := repository.NewLinksRepository()
+			shortenerRepo := memorystorage.NewLinksRepository()
 			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
@@ -103,7 +102,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			shortenerRepo := repository.LinksRepository{
+			shortenerRepo := memorystorage.LinksRepository{
 				Storage: map[int]string{
 					1: "http://postman-echo.com/get",
 				},

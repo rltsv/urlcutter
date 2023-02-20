@@ -8,28 +8,41 @@ import (
 )
 
 type Usecase struct {
-	repo repository.ShortenerRepo
+	inMemoryStorage repository.ShortenerRepo
 }
 
-func NewUsecase(shortenerRepo repository.ShortenerRepo) *Usecase {
-	return &Usecase{repo: shortenerRepo}
+func NewUsecase(localstorage repository.Storage) *Usecase {
+	return &Usecase{
+		inMemoryStorage: &localstorage,
+	}
 }
 
 func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link string) {
 
-	IDCount := u.repo.CreateLink(ctx, longLink)
-
-	shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
-
-	return shortLink
+	if config.Cfg.FileStoragePath == "" {
+		IDCount := u.inMemoryStorage.SaveLinkInMemoryStorage(ctx, longLink)
+		shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
+		return shortLink
+	} else {
+		IDCount := u.inMemoryStorage.SaveLinkInFileStorage(ctx, longLink)
+		shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
+		return shortLink
+	}
 }
 
 func (u *Usecase) GetLinkByID(ctx context.Context, id int) (origLink string, err error) {
 
-	origLink, err = u.repo.GetLinkByID(ctx, id)
-	if err == repository.ErrLinkNotFound {
-		return "", err
+	if config.Cfg.FileStoragePath == "" {
+		origLink, err = u.inMemoryStorage.GetLinkFromInMemoryStorage(ctx, id)
+		if err == repository.ErrLinkNotFound {
+			return "", err
+		}
+		return origLink, nil
+	} else {
+		origLink, err = u.inMemoryStorage.GetLinkFromInFileStorage(ctx, id)
+		if err == repository.ErrLinkNotFound {
+			return "", err
+		}
+		return origLink, nil
 	}
-
-	return origLink, nil
 }
