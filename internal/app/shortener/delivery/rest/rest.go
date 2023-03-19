@@ -12,10 +12,10 @@ import (
 )
 
 type HandlerShortener struct {
-	useCase shortener.Usecase
+	useCase shortener.UsecaseShortener
 }
 
-func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
+func NewHandlerShortener(shortenerUseCase shortener.UsecaseShortener) *HandlerShortener {
 	return &HandlerShortener{
 		useCase: shortenerUseCase,
 	}
@@ -90,9 +90,8 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	origLink, err := hs.useCase.GetLinkByID(ctx, id)
-	if err == repository.ErrLinkNotFound {
-		c.AbortWithStatus(http.StatusBadRequest)
-		c.Error(err)
+	if err != nil && err == repository.ErrLinkNotFound {
+		c.AbortWithError(http.StatusBadRequest, err)
 	} else {
 		c.Redirect(http.StatusTemporaryRedirect, origLink)
 	}

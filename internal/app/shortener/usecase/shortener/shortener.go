@@ -7,42 +7,57 @@ import (
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 )
 
-type Usecase struct {
-	inMemoryStorage repository.ShortenerRepo
+type UsecaseShortener struct {
+	storage repository.ShortenerRepo
 }
 
-func NewUsecase(localstorage repository.Storage) *Usecase {
-	return &Usecase{
-		inMemoryStorage: &localstorage,
+func NewUsecase(localstorage repository.Storage) *UsecaseShortener {
+	return &UsecaseShortener{
+		storage: &localstorage,
 	}
 }
 
-func (u *Usecase) CreateShortLink(ctx context.Context, longLink string) (link string) {
+func (u *UsecaseShortener) CreateShortLink(ctx context.Context, longLink string) (link string) {
 
-	if config.Cfg.FileStoragePath == "" {
-		IDCount := u.inMemoryStorage.SaveLinkInMemoryStorage(ctx, longLink)
-		shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
-		return shortLink
-	} else {
-		IDCount := u.inMemoryStorage.SaveLinkInFileStorage(ctx, longLink)
-		shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, IDCount)
-		return shortLink
+	switch {
+	case config.Cfg.FileStoragePath == "":
+		id, err := u.storage.CheckLinkInMemoryStorage(ctx, longLink)
+		if err != nil {
+			id = u.storage.SaveLinkInMemoryStorage(ctx, longLink)
+			shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, id)
+			return shortLink
+		} else {
+			shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, id)
+			return shortLink
+		}
+
+	case config.Cfg.FileStoragePath != "":
+		id, err := u.storage.CheckLinkInFileStorage(ctx, longLink)
+		if err != nil {
+			id = u.storage.SaveLinkInFileStorage(ctx, longLink)
+			shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, id)
+			return shortLink
+		} else {
+			shortLink := fmt.Sprintf("%s/%d", config.Cfg.BaseURL, id)
+			return shortLink
+		}
 	}
+	return
 }
 
-func (u *Usecase) GetLinkByID(ctx context.Context, id int) (origLink string, err error) {
+func (u *UsecaseShortener) GetLinkByID(ctx context.Context, id int) (string, error) {
 
 	if config.Cfg.FileStoragePath == "" {
-		origLink, err = u.inMemoryStorage.GetLinkFromInMemoryStorage(ctx, id)
+		origLink, err := u.storage.GetLinkFromInMemoryStorage(ctx, id)
 		if err == repository.ErrLinkNotFound {
 			return "", err
 		}
 		return origLink, nil
 	} else {
-		origLink, err = u.inMemoryStorage.GetLinkFromInFileStorage(ctx, id)
+		origLink, err := u.storage.GetLinkFromInFileStorage(ctx, id)
 		if err == repository.ErrLinkNotFound {
 			return "", err
 		}
-		return origLink, nil
+		return origLink.LongLink, nil
 	}
 }
