@@ -32,6 +32,8 @@ func (l *Storage) SaveLinkInFileStorage(ctx context.Context, longLink string) (i
 		LongLink: longLink,
 	}
 
+	log.Print(value)
+
 	data, err := json.Marshal(value)
 	if err != nil {
 		log.Fatal(err)

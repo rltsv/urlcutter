@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -12,11 +13,12 @@ import (
 	"testing"
 )
 
-func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
+func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 
 	type request struct {
-		URL  string
-		body string
+		URL    string
+		body   string
+		method string
 	}
 	type want struct {
 		body string
@@ -44,8 +46,8 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
-			shortenerRepo := memorystorage.NewLinksRepository()
-			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
+			shortenerRepo := repository.NewStorage()
+			shortenerUsecase := shortener.NewUsecase(*shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
 			err := config.InitConfig()
@@ -72,7 +74,7 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 
 }
 
-func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
+func TestHandlerShortener_HeadHandlerGet(t *testing.T) {
 	type request struct {
 		body      string
 		shortLink string
@@ -80,6 +82,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 	type want struct {
 		code         int
 		contentField string
+		body         string
 	}
 
 	tests := []struct {
@@ -88,7 +91,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 		want    want
 	}{
 		{
-			name: "test method get",
+			name: "good initial data",
 			request: request{
 				body:      "http://postman-echo.com/get",
 				shortLink: "/1",
@@ -102,14 +105,14 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			shortenerRepo := memorystorage.LinksRepository{
-				Storage: map[int]string{
+			shortenerRepo := repository.Storage{
+				InMemoryStorage: map[int]string{
 					1: "http://postman-echo.com/get",
 				},
-				IDCount: 1,
+				IDCount: 0,
 				Mux:     new(sync.RWMutex),
 			}
-			shortenerUsecase := shortener.NewUsecase(&shortenerRepo)
+			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
 			r := httptest.NewRequest(http.MethodGet, tc.request.shortLink, nil)
