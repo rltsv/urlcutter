@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"github.com/rltsv/urlcutter/internal/app/config"
 	"log"
 	"os"
 )
@@ -17,7 +16,7 @@ type ValueToFile struct {
 var values []ValueToFile
 
 func (l *Storage) SaveLinkInFileStorage(ctx context.Context, longLink string) (id int) {
-	file, err := os.OpenFile(config.Cfg.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	file, err := os.OpenFile(l.AppConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		log.Print("error while open file for storage")
 	}
@@ -60,7 +59,7 @@ func (l *Storage) SaveLinkInFileStorage(ctx context.Context, longLink string) (i
 }
 
 func (l *Storage) GetLinkFromInFileStorage(ctx context.Context, id int) (link ValueToFile, err error) {
-	file, err := os.OpenFile(config.Cfg.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	file, err := os.OpenFile(l.AppConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		log.Print("error while open file for storage")
 	}
@@ -86,7 +85,7 @@ func (l *Storage) GetLinkFromInFileStorage(ctx context.Context, id int) (link Va
 }
 
 func (l *Storage) CheckLinkInFileStorage(ctx context.Context, longLink string) (id int, err error) {
-	file, err := os.OpenFile(config.Cfg.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	file, err := os.OpenFile(l.AppConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		log.Print("error while open file for storage")
 	}
@@ -112,7 +111,7 @@ func (l *Storage) CheckLinkInFileStorage(ctx context.Context, longLink string) (
 
 func (l *Storage) CheckMaxID() (id int) {
 
-	file, err := os.OpenFile(config.Cfg.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	file, err := os.OpenFile(l.AppConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		log.Print("error while open file for storage")
 	}

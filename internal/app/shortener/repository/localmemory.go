@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/rltsv/urlcutter/internal/app/config"
 	"strings"
 	"sync"
 )
@@ -10,13 +11,15 @@ type Storage struct {
 	InMemoryStorage map[int]string
 	IDCount         int
 	Mux             *sync.RWMutex
+	AppConfig       config.Config
 }
 
-func NewStorage() *Storage {
+func NewStorage(cfg config.Config) *Storage {
 	return &Storage{
 		InMemoryStorage: make(map[int]string),
 		IDCount:         0,
 		Mux:             new(sync.RWMutex),
+		AppConfig:       cfg,
 	}
 }
 func (l *Storage) SaveLinkInMemoryStorage(ctx context.Context, longLink string) (id int) {

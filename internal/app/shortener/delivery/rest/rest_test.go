@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
 )
@@ -38,7 +39,7 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 			},
 			want: want{
 				code: http.StatusCreated,
-				body: `{"result":"http://localhost:8080/1"}`,
+				body: `{"result":"http://localhost:8000/1"}`,
 			},
 		},
 	}
@@ -46,12 +47,15 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
-			shortenerRepo := repository.NewStorage()
-			shortenerUsecase := shortener.NewUsecase(*shortenerRepo)
-			handler := NewHandlerShortener(*shortenerUsecase)
+			cfg := config.Config{
+				ServerAddress:   ":8000",
+				BaseURL:         "http://localhost:8000",
+				FileStoragePath: "memory.log",
+			}
 
-			err := config.InitConfig()
-			assert.NoError(t, err)
+			shortenerRepo := repository.NewStorage(cfg)
+			shortenerUsecase := shortener.NewUsecase(*shortenerRepo, cfg)
+			handler := NewHandlerShortener(*shortenerUsecase)
 
 			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
 			w := httptest.NewRecorder()
@@ -69,20 +73,18 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 			assert.Equal(t, tc.want.code, res.StatusCode)
 			assert.Equal(t, tc.want.body, string(respBody))
 
+			os.Args = nil
 		})
 	}
-
 }
 
 func TestHandlerShortener_HeadHandlerGet(t *testing.T) {
 	type request struct {
-		body      string
 		shortLink string
 	}
 	type want struct {
 		code         int
 		contentField string
-		body         string
 	}
 
 	tests := []struct {
@@ -93,7 +95,6 @@ func TestHandlerShortener_HeadHandlerGet(t *testing.T) {
 		{
 			name: "good initial data",
 			request: request{
-				body:      "http://postman-echo.com/get",
 				shortLink: "/1",
 			},
 			want: want{
@@ -101,18 +102,35 @@ func TestHandlerShortener_HeadHandlerGet(t *testing.T) {
 				contentField: "http://postman-echo.com/get",
 			},
 		},
+		{
+			name: "wrong short link",
+			request: request{
+				shortLink: "/2",
+			},
+			want: want{
+				code:         http.StatusBadRequest,
+				contentField: "",
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+
+			cfg := config.Config{
+				ServerAddress: ":8000",
+				BaseURL:       "http://localhost:8000",
+			}
+
 			shortenerRepo := repository.Storage{
 				InMemoryStorage: map[int]string{
 					1: "http://postman-echo.com/get",
 				},
-				IDCount: 0,
-				Mux:     new(sync.RWMutex),
+				IDCount:   0,
+				Mux:       new(sync.RWMutex),
+				AppConfig: cfg,
 			}
-			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
+			shortenerUsecase := shortener.NewUsecase(shortenerRepo, cfg)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
 			r := httptest.NewRequest(http.MethodGet, tc.request.shortLink, nil)

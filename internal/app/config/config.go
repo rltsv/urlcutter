@@ -1,21 +1,43 @@
 package config
 
 import (
+	"flag"
 	"github.com/caarlos0/env/v6"
+	"log"
+	"os"
 )
 
 type Config struct {
-	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
-	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	ServerAddress   string `env:"SERVER_ADDRESS"`
+	BaseURL         string `env:"BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-var Cfg Config
+func InitConfig() (cfg Config, err error) {
+	config := Config{}
 
-func InitConfig() error {
-	err := env.Parse(&Cfg)
+	err = env.Parse(&config)
 	if err != nil {
-		return err
+		return Config{}, err
 	}
-	return nil
+
+	if val, ok := os.LookupEnv("SERVER_ADDRESS"); !ok {
+		flag.StringVar(&config.ServerAddress, "a", ":8080", "http server startup address")
+	} else {
+		log.Printf("environment variable SERVER_ADDRESS is set as - %s", val)
+	}
+
+	if val, ok := os.LookupEnv("BASE_URL"); !ok {
+		flag.StringVar(&config.BaseURL, "b", "http://localhost:8080", "the base address of the resulting shortened URL")
+	} else {
+		log.Printf("environment variable BASE_URL is set as - %s", val)
+	}
+
+	if val, ok := os.LookupEnv("FILE_STORAGE_PATH"); !ok {
+		flag.StringVar(&config.FileStoragePath, "f", "", "the path to the file with the abbreviated URL")
+	} else {
+		log.Printf("environment variable SERVER_ADDRESS is set as - %s", val)
+	}
+
+	return config, nil
 }
