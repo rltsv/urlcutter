@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/rest"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
@@ -16,9 +15,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	flag.Parse()
-
+	
 	shortenerStorage := repository.NewStorage(cfg)
 	shortenerUsecase := shortener.NewUsecase(*shortenerStorage, cfg)
 	handler := rest.NewHandlerShortener(*shortenerUsecase)

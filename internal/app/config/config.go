@@ -28,7 +28,7 @@ func InitConfig() (cfg Config, err error) {
 	}
 
 	if val, ok := os.LookupEnv("BASE_URL"); !ok {
-		flag.StringVar(&config.BaseURL, "b", "http://localhost:8080", "the base address of the resulting shortened URL")
+		flag.StringVar(&config.BaseURL, "b", config.ServerAddress, "the base address of the resulting shortened URL")
 	} else {
 		log.Printf("environment variable BASE_URL is set as - %s", val)
 	}
@@ -38,6 +38,8 @@ func InitConfig() (cfg Config, err error) {
 	} else {
 		log.Printf("environment variable SERVER_ADDRESS is set as - %s", val)
 	}
+
+	flag.Parse()
 
 	return config, nil
 }
