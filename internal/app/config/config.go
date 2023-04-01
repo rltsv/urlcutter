@@ -17,7 +17,7 @@ func InitConfig() (cfg Config, err error) {
 	config := Config{}
 
 	srvrAddr := flag.String("a", "", "http server startup address")
-	baseUrl := flag.String("b", "", "the base address of the resulting shortened URL")
+	baseURL := flag.String("b", "", "the base address of the resulting shortened URL")
 	filePath := flag.String("f", "", "the path to the file with the abbreviated URL")
 	flag.Parse()
 
@@ -36,8 +36,8 @@ func InitConfig() (cfg Config, err error) {
 	}
 
 	if val, ok := os.LookupEnv("BASE_URL"); !ok {
-		if *baseUrl != "" {
-			config.BaseURL = *baseUrl
+		if *baseURL != "" {
+			config.BaseURL = *baseURL
 		} else if _, ok = os.LookupEnv("SERVER_ADDRESS"); ok {
 			config.BaseURL = "http://" + config.ServerAddress
 		} else if _, ok = os.LookupEnv("SERVER_ADDRESS"); !ok {
