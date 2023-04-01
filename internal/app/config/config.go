@@ -8,13 +8,18 @@ import (
 )
 
 type Config struct {
-	ServerAddress   string `env:"SERVER_ADDRESS"`
-	BaseURL         string `env:"BASE_URL"`
+	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
+	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func InitConfig() (cfg Config, err error) {
 	config := Config{}
+
+	srvrAddr := flag.String("a", "", "http server startup address")
+	baseUrl := flag.String("b", "", "the base address of the resulting shortened URL")
+	filePath := flag.String("f", "", "the path to the file with the abbreviated URL")
+	flag.Parse()
 
 	err = env.Parse(&config)
 	if err != nil {
@@ -22,24 +27,35 @@ func InitConfig() (cfg Config, err error) {
 	}
 
 	if val, ok := os.LookupEnv("SERVER_ADDRESS"); !ok {
-		flag.StringVar(&config.ServerAddress, "a", ":8080", "http server startup address")
+		if *srvrAddr != "" {
+			config.ServerAddress = *srvrAddr
+		}
 	} else {
 		log.Printf("environment variable SERVER_ADDRESS is set as - %s", val)
+
 	}
 
 	if val, ok := os.LookupEnv("BASE_URL"); !ok {
-		flag.StringVar(&config.BaseURL, "b", config.ServerAddress, "the base address of the resulting shortened URL")
+		if *baseUrl != "" {
+			config.BaseURL = *baseUrl
+		} else if _, ok = os.LookupEnv("SERVER_ADDRESS"); ok {
+			config.BaseURL = "http://" + config.ServerAddress
+		} else if _, ok = os.LookupEnv("SERVER_ADDRESS"); !ok {
+			if config.ServerAddress == *srvrAddr {
+				config.BaseURL = "http://" + *srvrAddr
+			}
+		}
 	} else {
 		log.Printf("environment variable BASE_URL is set as - %s", val)
 	}
 
 	if val, ok := os.LookupEnv("FILE_STORAGE_PATH"); !ok {
-		flag.StringVar(&config.FileStoragePath, "f", "", "the path to the file with the abbreviated URL")
+		if *filePath != "" {
+			config.FileStoragePath = *filePath
+		}
 	} else {
-		log.Printf("environment variable SERVER_ADDRESS is set as - %s", val)
+		log.Printf("environment variable FILE_STORAGE_PATH is set as - %s", val)
 	}
-
-	flag.Parse()
 
 	return config, nil
 }
