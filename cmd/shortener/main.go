@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	shortenerStorage := repository.NewStorage(cfg)
 	shortenerUsecase := shortener.NewUsecase(*shortenerStorage, cfg)
 	handler := rest.NewHandlerShortener(*shortenerUsecase)
