@@ -1,21 +1,19 @@
 package main
 
 import (
+	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/rest"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
+	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
+	"log"
 	"net/http"
 )
 
-func MethodPost(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "POST" {
-
-	}
-}
-
 func main() {
+	repo := repository.NewLinksRepository()
+	repoUsecase := shortener.NewUsecase(repo)
+	handler := rest.NewHandlerShortener(*repoUsecase)
 
-	h1 := http.HandlerFunc(MethodPost)
+	router := rest.SetupRouter(handler)
 
-	http.HandleFunc("/", h1)
-
-	http.ListenAndServe("localhost:8080", nil)
+	log.Fatal(http.ListenAndServe("localhost:8080", router))
 }
