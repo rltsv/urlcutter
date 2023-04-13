@@ -8,14 +8,6 @@ import (
 	"strings"
 )
 
-//type CustomRC struct {
-//	io.Reader
-//}
-//
-//func (c *CustomRC) Close() error {
-//	return nil
-//}
-
 type CustomRW struct {
 	gin.ResponseWriter
 	buf *bytes.Buffer

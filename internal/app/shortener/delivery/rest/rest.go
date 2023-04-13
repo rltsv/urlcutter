@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
@@ -22,32 +23,77 @@ func NewHandlerShortener(shortenerUseCase shortener.UsecaseShortener) *HandlerSh
 }
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
-
 	ctx := c.Request.Context()
 
-	respBody, err := io.ReadAll(c.Request.Body)
+	var dto entity.CreateLinkDTO
+	err := json.NewDecoder(c.Request.Body).Decode(&dto)
 	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-	defer c.Request.Body.Close()
-
-	if len(respBody) == 0 {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "invalid data",
+			"error":   err.Error(),
+		})
 	}
 
-	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
-	c.Writer.WriteHeader(http.StatusCreated)
-	_, err = c.Writer.Write([]byte(shortLink))
+	data, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "invalid data",
+			"error":   err.Error(),
+		})
 	}
+
+	cookie, err := c.Request.Cookie("token")
+	if err != nil {
+		switch err {
+		case http.ErrNoCookie:
+			userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+					"message": "invalid data",
+					"error":   err.Error(),
+				})
+			}
+			token := auth.CreateToken(userid)
+
+			c.Writer.WriteHeader(http.StatusCreated)
+			c.SetCookie("token", string(token), 0, "", "", false, false)
+			_, err = c.Writer.Write([]byte(shorturl))
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+		}
+	} else {
+		userid := auth.DecryptToken(cookie)
+		dto.UserID = userid
+
+		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"message": "invalid data",
+				"error":   err.Error(),
+			})
+		}
+
+		token := auth.CreateToken(userid)
+
+		c.Writer.WriteHeader(http.StatusCreated)
+		c.SetCookie("token", string(token), 0, "", "", false, false)
+		_, err = c.Writer.Write([]byte(shorturl))
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+	}
+
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
-	ctx := c.Request.Context()
+	//ctx := c.Request.Context()
 
 	rawValue, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -64,7 +110,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		return
 	}
 
-	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
+	//shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
 
 	ValueOut := entity.OutputData{
 		Response: shortLink,

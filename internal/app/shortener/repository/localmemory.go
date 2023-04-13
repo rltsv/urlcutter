@@ -2,51 +2,115 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
 	"github.com/rltsv/urlcutter/internal/app/config"
-	"strings"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
+	"log"
 	"sync"
 )
 
-type Storage struct {
-	InMemoryStorage map[int]string
-	IDCount         int
-	Mux             *sync.RWMutex
-	AppConfig       config.Config
+var (
+	ErrLinkAlreadyExist = errors.New("this link already shortened")
+	ErrUnknownLink      = errors.New("unknown link")
+)
+
+type MemoryStorage struct {
+	Links     []entity.Link
+	Mux       *sync.RWMutex
+	AppConfig config.Config
 }
 
-func NewStorage(cfg config.Config) *Storage {
-	return &Storage{
-		InMemoryStorage: make(map[int]string),
-		IDCount:         0,
-		Mux:             new(sync.RWMutex),
-		AppConfig:       cfg,
+func NewMemoryStorage(cfg config.Config) *MemoryStorage {
+	return &MemoryStorage{
+		Links:     make([]entity.Link, 0),
+		Mux:       new(sync.RWMutex),
+		AppConfig: cfg,
 	}
 }
-func (l *Storage) SaveLinkInMemoryStorage(ctx context.Context, longLink string) (id int) {
-	l.Mux.Lock()
-	defer l.Mux.Unlock()
-	l.IDCount++
-	l.InMemoryStorage[l.IDCount] = longLink
-	return l.IDCount
-}
 
-func (l *Storage) GetLinkFromInMemoryStorage(ctx context.Context, id int) (longLink string, err error) {
-	l.Mux.RLock()
-	defer l.Mux.RUnlock()
-	if val, ok := l.InMemoryStorage[id]; !ok {
-		return "", ErrLinkNotFound
+// CreateNewLink create new instance of link
+func CreateNewLink(baseurl string, dto entity.Link) *entity.Link {
+	linkID := string(GenerateLinkID())
+	if dto.UserID != "" {
+		return &entity.Link{
+			LinkID:   linkID,
+			UserID:   dto.UserID,
+			LongURL:  dto.LongURL,
+			ShortURL: fmt.Sprintf("%s/%s", baseurl, linkID),
+		}
 	} else {
-		return val, nil
-	}
-}
-
-func (l *Storage) CheckLinkInMemoryStorage(ctx context.Context, longLink string) (id int, err error) {
-	l.Mux.RLock()
-	defer l.Mux.RUnlock()
-	for key, val := range l.InMemoryStorage {
-		if strings.EqualFold(val, longLink) {
-			return key, nil
+		return &entity.Link{
+			LinkID:   linkID,
+			UserID:   string(GenerateUserID()),
+			LongURL:  dto.LongURL,
+			ShortURL: fmt.Sprintf("%s/%s", baseurl, linkID),
 		}
 	}
-	return 0, ErrLinkNotFound
+
+}
+
+func (s *MemoryStorage) SaveLinkInMemoryStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
+	s.Mux.Lock()
+	defer s.Mux.Unlock()
+
+	if dto.UserID == "" {
+		link := CreateNewLink(s.AppConfig.BaseURL, dto)
+		s.Links = append(s.Links, *link)
+		return link.UserID, link.ShortURL, nil
+	} else { // dto.UserID != ""
+		for _, val := range s.Links {
+			if val.LongURL == dto.LongURL && val.UserID == dto.UserID {
+				return "", "", ErrLinkAlreadyExist
+			} else {
+				link := CreateNewLink(s.AppConfig.BaseURL, dto)
+				s.Links = append(s.Links, *link)
+				return link.UserID, link.ShortURL, nil
+			}
+		}
+	}
+	return "", "", nil
+}
+
+func (s *MemoryStorage) GetLinkFromInMemoryStorage(ctx context.Context, dto entity.Link) (longurl string, err error) {
+	s.Mux.RLock()
+	defer s.Mux.RUnlock()
+
+	for _, val := range s.Links {
+		if val.LinkID == dto.LinkID && val.UserID == dto.UserID {
+			return val.LongURL, nil
+		} else {
+			return "", ErrUnknownLink
+		}
+	}
+	return "", nil
+}
+
+func (s *MemoryStorage) CheckLinkInMemoryStorage(ctx context.Context, linkdto entity.Link) (id int, err error) {
+	s.Mux.RLock()
+	defer s.Mux.RUnlock()
+	return 0, nil
+}
+
+// GenerateLinkID generate LinkID
+func GenerateLinkID() []byte {
+	b := make([]byte, 6)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Printf("error while generateLinkID: %v\n", err)
+		return nil
+	}
+	return b
+}
+
+// GenerateUserID generate userID
+func GenerateUserID() []byte {
+	b := make([]byte, 6)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Printf("error while generateUserID: %v\n", err)
+		return nil
+	}
+	return b
 }

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
 var (
@@ -10,15 +11,10 @@ var (
 	ErrRepositoryEmpty = errors.New("there are no any saved links")
 )
 
-type ShortenerRepo interface {
-	MemoryRepository
-	FileRepository
-}
-
 type MemoryRepository interface {
-	SaveLinkInMemoryStorage(ctx context.Context, longLink string) (id int)
-	GetLinkFromInMemoryStorage(ctx context.Context, id int) (longLink string, err error)
-	CheckLinkInMemoryStorage(ctx context.Context, longLink string) (id int, err error)
+	SaveLinkInMemoryStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error)
+	GetLinkFromInMemoryStorage(ctx context.Context, dto entity.Link) (longurl string, err error)
+	CheckLinkInMemoryStorage(ctx context.Context, linkdto entity.Link) (id int, err error)
 }
 
 type FileRepository interface {
