@@ -17,7 +17,7 @@ var (
 type MemoryRepository interface {
 	SaveLinkInMemoryStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error)
 	GetLinkFromInMemoryStorage(ctx context.Context, dto entity.Link) (longurl string, err error)
-	CheckLinkInMemoryStorage(ctx context.Context, linkdto entity.Link) (id int, err error)
+	GetLinksByUser(ctx context.Context, dto entity.Link) []entity.SendLinkDTO
 }
 
 type FileRepository interface {

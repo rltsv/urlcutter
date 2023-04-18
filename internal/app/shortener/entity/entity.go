@@ -3,8 +3,8 @@ package entity
 type Link struct {
 	LinkID   string `json:"link_id"`
 	UserID   string `json:"user_id"`
-	LongURL  string `json:"long_link"`
-	ShortURL string `json:"short_link"`
+	LongURL  string `json:"long_url,omitempty"`
+	ShortURL string `json:"short_url,omitempty"`
 }
 
 type CreateLinkDTO struct {
@@ -17,6 +17,15 @@ type GetLinkDTO struct {
 	LinkID string
 }
 
+type GetAllLinksDTO struct {
+	UserID string
+}
+
+type SendLinkDTO struct {
+	ShortURL string `json:"short_url,omitempty"`
+	LongURL  string `json:"long_url,omitempty"`
+}
+
 func NewLink(dto CreateLinkDTO) Link {
 	return Link{
 		UserID:  dto.UserID,
@@ -27,6 +36,12 @@ func NewLink(dto CreateLinkDTO) Link {
 func GetLink(dto GetLinkDTO) Link {
 	return Link{
 		LinkID: dto.LinkID,
+		UserID: dto.UserID,
+	}
+}
+
+func GetAllLinks(dto GetAllLinksDTO) Link {
+	return Link{
 		UserID: dto.UserID,
 	}
 }

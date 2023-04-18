@@ -41,11 +41,11 @@ func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.Creat
 }
 
 func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLinkDTO) (longurl string, err error) {
-	LinkDTO := entity.GetLink(dto)
+	link := entity.GetLink(dto)
 
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		longurl, err = u.MemoryStorage.GetLinkFromInMemoryStorage(ctx, LinkDTO)
+		longurl, err = u.MemoryStorage.GetLinkFromInMemoryStorage(ctx, link)
 		if err != nil {
 			return longurl, err
 		}
@@ -57,4 +57,16 @@ func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLi
 
 	}
 	return longurl, err
+}
+
+func (u *UsecaseShortener) GetLinksByUser(ctx context.Context, dto entity.GetAllLinksDTO) (links []entity.SendLinkDTO, err error) {
+	user := entity.GetAllLinks(dto)
+
+	switch {
+	case u.appConfig.FileStoragePath == "":
+		return u.MemoryStorage.GetLinksByUser(ctx, user)
+	case u.appConfig.FileStoragePath != "":
+		//sdasd
+	}
+	return links, nil
 }

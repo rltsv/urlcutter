@@ -52,23 +52,15 @@ func (s *MemoryStorage) SaveLinkInMemoryStorage(ctx context.Context, dto entity.
 	s.Mux.Lock()
 	defer s.Mux.Unlock()
 
-	switch s.CheckUserInMemory(dto) {
-	case false:
-		link := CreateNewLink(s.AppConfig.BaseURL, dto)
-		s.Links = append(s.Links, *link)
-		return link.UserID, link.ShortURL, nil
-	case true:
-		for _, val := range s.Links {
-			if val.UserID == dto.UserID && val.LinkID == dto.LinkID {
-				return val.UserID, val.ShortURL, ErrLinkAlreadyExist
-			} else {
-				link := CreateNewLink(s.AppConfig.BaseURL, dto)
-				s.Links = append(s.Links, *link)
-				return link.UserID, link.ShortURL, nil
-			}
+	for _, val := range s.Links {
+		if val.UserID == dto.UserID && val.LongURL == dto.LongURL {
+			return val.UserID, val.ShortURL, ErrLinkAlreadyExist
 		}
 	}
-	return userid, shorturl, err
+	link := CreateNewLink(s.AppConfig.BaseURL, dto)
+	s.Links = append(s.Links, *link)
+	log.Printf("%+v", s.Links)
+	return link.UserID, link.ShortURL, nil
 }
 
 func (s *MemoryStorage) GetLinkFromInMemoryStorage(ctx context.Context, dto entity.Link) (longurl string, err error) {
@@ -84,6 +76,24 @@ func (s *MemoryStorage) GetLinkFromInMemoryStorage(ctx context.Context, dto enti
 		}
 	}
 	return "", ErrLinkNotFound
+}
+
+func (s *MemoryStorage) GetLinksByUser(ctx context.Context, dto entity.Link) (links []entity.SendLinkDTO, err error) {
+	links = make([]entity.SendLinkDTO, 0)
+	if ok := s.CheckUserInMemory(dto); !ok {
+		return nil, ErrUserIsNotFound
+	} else {
+		for _, val := range s.Links {
+			if val.UserID == dto.UserID {
+				link := entity.SendLinkDTO{
+					ShortURL: val.ShortURL,
+					LongURL:  val.LongURL,
+				}
+				links = append(links, link)
+			}
+		}
+	}
+	return links, nil
 }
 
 // CheckUserInMemory check are user in already in memory or not

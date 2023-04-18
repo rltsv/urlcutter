@@ -46,17 +46,12 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusCreated)
 		c.SetCookie("token", string(auth.CreateToken(userid)), 0, "", "", false, false)
 		c.Writer.Write([]byte(shorturl))
-	case err:
-		//TODO здесь ошибка, когда второй раз пытаешься создать ссылку
-		c.AbortWithError(http.StatusBadRequest, errors.New("failed while get cookie from request"))
-		log.Print(err)
-		return
 	default:
 		dto.UserID = auth.DecryptToken(cookie)
 
 		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
-		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("failed while create shorturl"))
+		if err != nil && err == repository.ErrLinkAlreadyExist {
+			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
 
@@ -113,12 +108,12 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"message": "there is no created links by this user",
 			})
-			log.Print(err.Error())
 			return
 		default:
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),
 			})
+			return
 		}
 	}
 
@@ -150,5 +145,40 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	} else {
 		c.Redirect(http.StatusTemporaryRedirect, longURL)
 	}
+}
+
+func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	cookie, err := c.Request.Cookie("token")
+	if err != nil {
+		switch err {
+		case http.ErrNoCookie:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"message": "there is no created links by this user",
+			})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
+	dto := entity.GetAllLinksDTO{UserID: auth.DecryptToken(cookie)}
+	links, err := hs.useCase.GetLinksByUser(ctx, dto)
+	log.Print(links)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	body, err := json.Marshal(&links)
+
+	c.Writer.WriteHeader(http.StatusCreated)
+	c.Writer.Header().Set("content-type", "application/json")
+	c.SetCookie("token", cookie.Value, 0, "", "", false, false)
+	c.Writer.Write(body)
 
 }
