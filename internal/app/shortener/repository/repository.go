@@ -7,8 +7,11 @@ import (
 )
 
 var (
-	ErrLinkNotFound    = errors.New("link not found")
-	ErrRepositoryEmpty = errors.New("there are no any saved links")
+	ErrRepositoryEmpty  = errors.New("there are no any saved links")
+	ErrLinkAlreadyExist = errors.New("this link already shortened")
+	ErrUnknownLink      = errors.New("unknown link")
+	ErrLinkNotFound     = errors.New("link not found")
+	ErrUserIsNotFound   = errors.New("there is no any user in memory with this id")
 )
 
 type MemoryRepository interface {

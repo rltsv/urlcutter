@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"os"
 	"sync"
 )
@@ -21,21 +22,12 @@ func NewFileStorage(cfg config.Config) *FileStorage {
 	}
 }
 
-func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, longLink string) (id int) {
+func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
 	//file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	//if err != nil {
-	//	log.Print("error while open file for storage")
+	//	return userid, shorturl, err
 	//}
 	//defer file.Close()
-	//
-	//maxID := s.CheckMaxID()
-	//s.IDCount = maxID
-	//
-	//s.IDCount++
-	//value := ValueToFile{
-	//	ID:       s.IDCount,
-	//	LongLink: longLink,
-	//}
 	//
 	//data, err := json.Marshal(value)
 	//if err != nil {
@@ -59,7 +51,7 @@ func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, longLink string
 	//	log.Fatal(err)
 	//}
 	//
-	return 0
+	return userid, shorturl, err
 }
 
 func (s *FileStorage) GetLinkFromInFileStorage(ctx context.Context, id int) (link ValueToFile, err error) {

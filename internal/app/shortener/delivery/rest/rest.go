@@ -2,14 +2,15 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"io"
+	"log"
 	"net/http"
-	"strconv"
 )
 
 type HandlerShortener struct {
@@ -24,72 +25,45 @@ func NewHandlerShortener(shortenerUseCase shortener.UsecaseShortener) *HandlerSh
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
-
 	var dto entity.CreateLinkDTO
-	err := json.NewDecoder(c.Request.Body).Decode(&dto)
+
+	longURL, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "invalid data",
-			"error":   err.Error(),
-		})
+		c.AbortWithError(http.StatusBadRequest, errors.New("failed while read body"))
+		return
 	}
 
-	data, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "invalid data",
-			"error":   err.Error(),
-		})
-	}
+	dto.LongURL = string(longURL)
 
 	cookie, err := c.Request.Cookie("token")
-	if err != nil {
-		switch err {
-		case http.ErrNoCookie:
-			userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-					"message": "invalid data",
-					"error":   err.Error(),
-				})
-			}
-			token := auth.CreateToken(userid)
-
-			c.Writer.WriteHeader(http.StatusCreated)
-			c.SetCookie("token", string(token), 0, "", "", false, false)
-			_, err = c.Writer.Write([]byte(shorturl))
-			if err != nil {
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-		default:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
+	switch err {
+	case http.ErrNoCookie:
+		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, errors.New("failed while create shorturl"))
+			return
 		}
-	} else {
-		userid := auth.DecryptToken(cookie)
-		dto.UserID = userid
+		c.Writer.WriteHeader(http.StatusCreated)
+		c.SetCookie("token", string(auth.CreateToken(userid)), 0, "", "", false, false)
+		c.Writer.Write([]byte(shorturl))
+	case err:
+		//TODO здесь ошибка, когда второй раз пытаешься создать ссылку
+		c.AbortWithError(http.StatusBadRequest, errors.New("failed while get cookie from request"))
+		log.Print(err)
+		return
+	default:
+		dto.UserID = auth.DecryptToken(cookie)
 
 		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"message": "invalid data",
-				"error":   err.Error(),
-			})
-		}
-
-		token := auth.CreateToken(userid)
-
-		c.Writer.WriteHeader(http.StatusCreated)
-		c.SetCookie("token", string(token), 0, "", "", false, false)
-		_, err = c.Writer.Write([]byte(shorturl))
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.AbortWithError(http.StatusBadRequest, errors.New("failed while create shorturl"))
 			return
 		}
-	}
 
+		c.Writer.WriteHeader(http.StatusCreated)
+		c.SetCookie("token", string(auth.CreateToken(userid)), 0, "", "", false, false)
+		c.Writer.Write([]byte(shorturl))
+	}
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
@@ -130,15 +104,51 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
-
 	ctx := c.Request.Context()
 
-	id, _ := strconv.Atoi(c.Param("id"))
-
-	origLink, err := hs.useCase.GetLinkByID(ctx, id)
-	if err != nil && err == repository.ErrLinkNotFound {
-		c.AbortWithError(http.StatusBadRequest, err)
-	} else {
-		c.Redirect(http.StatusTemporaryRedirect, origLink)
+	cookie, err := c.Request.Cookie("token")
+	if err != nil {
+		switch err {
+		case http.ErrNoCookie:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"message": "there is no created links by this user",
+			})
+			log.Print(err.Error())
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+		}
 	}
+
+	userID := auth.DecryptToken(cookie)
+	linkID := c.Param("id")
+	if linkID == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "check id path of url",
+		})
+		log.Print(errors.New("error: problem with link id"))
+	}
+
+	dto := entity.GetLinkDTO{
+		UserID: userID,
+		LinkID: linkID,
+	}
+
+	longURL, err := hs.useCase.GetLinkByUserID(ctx, dto)
+	if err != nil && err == repository.ErrLinkNotFound {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "there is no any link by this id",
+		})
+		log.Print(err.Error())
+	} else if err != nil && err == repository.ErrUserIsNotFound {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "there is no user ",
+		})
+		log.Print(err.Error())
+	} else {
+		c.Redirect(http.StatusTemporaryRedirect, longURL)
+	}
+
 }

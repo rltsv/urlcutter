@@ -2,7 +2,6 @@ package shortener
 
 import (
 	"context"
-	"errors"
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
@@ -24,18 +23,9 @@ func NewUsecase(memorystorage repository.MemoryStorage, filestorage repository.F
 
 func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.CreateLinkDTO) (userid, shorturl string, err error) {
 	link := entity.NewLink(dto)
-	if link.LongURL == "" {
-		return "", "", errors.New("there is nothing to shorten")
-	}
-
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		userid, shorturl, err = u.MemoryStorage.SaveLinkInMemoryStorage(ctx, link)
-		if err != nil && err == repository.ErrLinkAlreadyExist {
-			return "", "", err
-		}
-
-		return userid, shorturl, nil
+		return u.MemoryStorage.SaveLinkInMemoryStorage(ctx, link)
 	case u.appConfig.FileStoragePath != "":
 		//id, err := u.storage.CheckLinkInFileStorage(ctx, longLink)
 		//if err != nil {
@@ -50,12 +40,21 @@ func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.Creat
 	return
 }
 
-func (u *UsecaseShortener) GetLinkByID(ctx context.Context, id int) (string, error) {
+func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLinkDTO) (longurl string, err error) {
+	LinkDTO := entity.GetLink(dto)
 
+	switch {
+	case u.appConfig.FileStoragePath == "":
+		longurl, err = u.MemoryStorage.GetLinkFromInMemoryStorage(ctx, LinkDTO)
+		if err != nil {
+			return longurl, err
+		}
+		return longurl, err
+	}
 	if u.appConfig.FileStoragePath == "" {
 
 	} else {
 
 	}
-	return "", nil
+	return longurl, err
 }
