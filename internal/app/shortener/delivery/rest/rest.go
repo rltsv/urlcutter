@@ -29,7 +29,7 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 
 	longURL, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, errors.New("failed while read body"))
+		c.AbortWithError(http.StatusInternalServerError, errors.New("failed while read body"))
 		return
 	}
 
@@ -39,24 +39,28 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	switch err {
 	case http.ErrNoCookie:
 		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
-		if err != nil {
-			c.AbortWithError(http.StatusBadRequest, errors.New("failed while create shorturl"))
+		if err != nil && err == repository.ErrLinkAlreadyExist {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "link already shortened",
+			})
 			return
 		}
 		c.Writer.WriteHeader(http.StatusCreated)
-		c.SetCookie("token", string(auth.CreateToken(userid)), 0, "", "", false, false)
+		c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
 		c.Writer.Write([]byte(shorturl))
 	default:
 		dto.UserID = auth.DecryptToken(cookie)
 
 		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
 		if err != nil && err == repository.ErrLinkAlreadyExist {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "link already shortened",
+			})
 			return
 		}
 
 		c.Writer.WriteHeader(http.StatusCreated)
-		c.SetCookie("token", string(auth.CreateToken(userid)), 0, "", "", false, false)
+		c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
 		c.Writer.Write([]byte(shorturl))
 	}
 }
@@ -93,9 +97,6 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	c.Writer.Header().Set("content-type", "application/json")
 	c.Writer.WriteHeader(http.StatusCreated)
 	_, err = c.Writer.Write(rawShortLink)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
@@ -105,12 +106,12 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case http.ErrNoCookie:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"message": "there is no created links by this user",
 			})
 			return
 		default:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
 			})
 			return
@@ -123,7 +124,6 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "check id path of url",
 		})
-		log.Print(errors.New("error: problem with link id"))
 	}
 
 	dto := entity.GetLinkDTO{
@@ -139,7 +139,7 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 		log.Print(err.Error())
 	} else if err != nil && err == repository.ErrUserIsNotFound {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "there is no user ",
+			"message": "there is no shortened links by this user",
 		})
 		log.Print(err.Error())
 	} else {
@@ -154,23 +154,23 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case http.ErrNoCookie:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"message": "there is no created links by this user",
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "there is no shortened links by this user",
 			})
 			return
 		default:
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
+			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
 	}
+	userid := auth.DecryptToken(cookie)
 
-	dto := entity.GetAllLinksDTO{UserID: auth.DecryptToken(cookie)}
+	dto := entity.GetAllLinksDTO{UserID: userid}
 	links, err := hs.useCase.GetLinksByUser(ctx, dto)
-	log.Print(links)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "there is no shortened links by this user",
+		})
 		return
 	}
 
@@ -178,7 +178,6 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 
 	c.Writer.WriteHeader(http.StatusCreated)
 	c.Writer.Header().Set("content-type", "application/json")
-	c.SetCookie("token", cookie.Value, 0, "", "", false, false)
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
 	c.Writer.Write(body)
-
 }

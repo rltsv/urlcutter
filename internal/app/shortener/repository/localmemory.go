@@ -59,7 +59,6 @@ func (s *MemoryStorage) SaveLinkInMemoryStorage(ctx context.Context, dto entity.
 	}
 	link := CreateNewLink(s.AppConfig.BaseURL, dto)
 	s.Links = append(s.Links, *link)
-	log.Printf("%+v", s.Links)
 	return link.UserID, link.ShortURL, nil
 }
 
