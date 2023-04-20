@@ -8,15 +8,15 @@ import (
 )
 
 type UsecaseShortener struct {
-	MemoryStorage repository.MemoryStorage
-	FileStorage   repository.FileStorage
+	memoryStorage repository.MemoryRepository
+	fileStorage   repository.FileRepository
 	appConfig     config.Config
 }
 
-func NewUsecase(memorystorage repository.MemoryStorage, filestorage repository.FileStorage, cfg config.Config) *UsecaseShortener {
+func NewUsecase(memorystorage repository.MemoryRepository, filestorage repository.FileRepository, cfg config.Config) *UsecaseShortener {
 	return &UsecaseShortener{
-		MemoryStorage: memorystorage,
-		FileStorage:   filestorage,
+		memoryStorage: memorystorage,
+		fileStorage:   filestorage,
 		appConfig:     cfg,
 	}
 }
@@ -25,17 +25,9 @@ func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.Creat
 	link := entity.NewLink(dto)
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		return u.MemoryStorage.SaveLinkInMemoryStorage(ctx, link)
+		return u.memoryStorage.SaveLinkInMemoryStorage(ctx, link)
 	case u.appConfig.FileStoragePath != "":
-		//id, err := u.storage.CheckLinkInFileStorage(ctx, longLink)
-		//if err != nil {
-		//	id = u.storage.SaveLinkInFileStorage(ctx, longLink)
-		//	shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-		//	return shortLink
-		//} else {
-		//	shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-		//	return shortLink
-		//}
+		return u.fileStorage.SaveLinkInFileStorage(ctx, link)
 	}
 	return
 }
@@ -45,7 +37,7 @@ func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLi
 
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		longurl, err = u.MemoryStorage.GetLinkFromInMemoryStorage(ctx, link)
+		longurl, err = u.memoryStorage.GetLinkFromInMemoryStorage(ctx, link)
 		if err != nil {
 			return longurl, err
 		}
@@ -64,7 +56,7 @@ func (u *UsecaseShortener) GetLinksByUser(ctx context.Context, dto entity.GetAll
 
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		return u.MemoryStorage.GetLinksByUser(ctx, user)
+		return u.memoryStorage.GetLinksByUser(ctx, user)
 	case u.appConfig.FileStoragePath != "":
 		//sdasd
 	}

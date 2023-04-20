@@ -18,7 +18,7 @@ func main() {
 
 	memoryStorage := repository.NewMemoryStorage(cfg)
 	fileStorage := repository.NewFileStorage(cfg)
-	shortenerUsecase := shortener.NewUsecase(*memoryStorage, *fileStorage, cfg)
+	shortenerUsecase := shortener.NewUsecase(memoryStorage, fileStorage, cfg)
 	handler := rest.NewHandlerShortener(*shortenerUsecase)
 
 	router := rest.SetupRouter(handler)

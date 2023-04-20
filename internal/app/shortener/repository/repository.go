@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
+	"os"
 )
 
 var (
@@ -21,7 +22,7 @@ type MemoryRepository interface {
 }
 
 type FileRepository interface {
-	SaveLinkInFileStorage(ctx context.Context, longLink string) (id int)
-	GetLinkFromInFileStorage(ctx context.Context, id int) (link ValueToFile, err error)
-	CheckLinkInFileStorage(ctx context.Context, longLink string) (id int, err error)
+	SaveLinkInFileStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error)
+	GetLinkFromFileStorage(ctx context.Context, id int) (err error)
+	checkLinkInByUser(file *os.File, dto entity.Link) bool
 }

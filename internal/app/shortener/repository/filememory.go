@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
+	"log"
 	"os"
 	"sync"
 )
@@ -23,47 +26,33 @@ func NewFileStorage(cfg config.Config) *FileStorage {
 }
 
 func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
-	//file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	//if err != nil {
-	//	return userid, shorturl, err
-	//}
-	//defer file.Close()
-	//
-	//data, err := json.Marshal(value)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//writer := bufio.NewWriter(file)
-	//
-	//_, err = writer.Write(data)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//err = writer.WriteByte('\n')
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//err = writer.Flush()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	return userid, shorturl, err
+	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	if err != nil {
+		return userid, shorturl, err
+	}
+	defer file.Close()
+
+	if ok := s.checkLinkInByUser(file, dto); ok {
+		return userid, shorturl, ErrLinkAlreadyExist
+	}
+	link := CreateNewLink(s.appConfig.BaseURL, dto)
+
+	if err = json.NewEncoder(file).Encode(&link); err != nil {
+		return userid, shorturl, err
+	} else {
+		return link.UserID, link.ShortURL, nil
+	}
 }
 
-func (s *FileStorage) GetLinkFromInFileStorage(ctx context.Context, id int) (link ValueToFile, err error) {
-	//	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	//	if err != nil {
-	//		log.Print("error while open file for storage")
-	//	}
-	//	defer file.Close()
-	//
-	//	scanner := bufio.NewScanner(file)
-	//
-	//	link = ValueToFile{}
+func (s *FileStorage) GetLinkFromFileStorage(ctx context.Context, dto entity.Link) (longurl string, err error) {
+	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	if err != nil {
+		return longurl, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
 	//
 	//	for scanner.Scan() {
 	//		err = json.Unmarshal(scanner.Bytes(), &link)
@@ -102,41 +91,20 @@ func (s *FileStorage) GetLinkFromInFileStorage(ctx context.Context, id int) (lin
 	//			return link.ID, nil
 	//		}
 	//	}
-	return ValueToFile{}, ErrLinkNotFound
+	return longurl, err
 }
 
-func (s *FileStorage) CheckMaxID() (id int) {
-	//
-	//file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	//if err != nil {
-	//	log.Print("error while open file for storage")
-	//}
-	//defer file.Close()
-	//
-	//scanner := bufio.NewScanner(file)
-	//
-	//link := ValueToFile{}
-	//
-	//var maxID = 0
-	//
-	//for scanner.Scan() {
-	//	err = json.Unmarshal(scanner.Bytes(), &link)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	if link.ID > maxID {
-	//		maxID = link.ID
-	//	} else {
-	//		continue
-	//	}
-	//}
-	return 0
+func (s *FileStorage) checkLinkInByUser(file *os.File, dto entity.Link) bool {
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		link := entity.Link{}
+		err := json.Unmarshal(scanner.Bytes(), &link)
+		if err != nil {
+			log.Print("failed while decode line in struct while scan")
+		}
+		if link.LongURL == dto.LongURL && link.UserID == dto.UserID {
+			return true
+		}
+	}
+	return false
 }
-
-type ValueToFile struct {
-	ID       int    `json:"id"`
-	LongLink string `json:"long_link"`
-}
-
-var values []ValueToFile

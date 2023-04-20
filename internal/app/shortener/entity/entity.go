@@ -8,8 +8,8 @@ type Link struct {
 }
 
 type CreateLinkDTO struct {
-	UserID  string
-	LongURL string
+	UserID  string `json:"user_id"`
+	LongURL string `json:"long_url"`
 }
 
 type GetLinkDTO struct {

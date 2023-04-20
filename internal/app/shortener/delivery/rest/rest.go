@@ -32,6 +32,7 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, errors.New("failed while read body"))
 		return
 	}
+	defer c.Request.Body.Close()
 
 	dto.LongURL = string(longURL)
 
@@ -66,37 +67,54 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
-	//ctx := c.Request.Context()
+	ctx := c.Request.Context()
 
-	rawValue, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-	defer c.Request.Body.Close()
-
-	ValueIn := &entity.InputData{}
-	var shortLink string
-
-	if err := json.Unmarshal(rawValue, &ValueIn); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+	var dto entity.CreateLinkDTO
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	//shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
+	cookie, err := c.Request.Cookie("token")
+	switch err {
+	case http.ErrNoCookie:
+		userid, shorturl, _ := hs.useCase.CreateShortLink(ctx, dto)
+		c.Writer.WriteHeader(http.StatusCreated)
+		c.SetCookie(
+			"token",
+			string(auth.CreateToken(userid)),
+			3600,
+			"",
+			"",
+			false,
+			false,
+		)
+		c.Writer.Write([]byte(shorturl))
+	default:
+		dto.UserID = auth.DecryptToken(cookie)
 
-	ValueOut := entity.OutputData{
-		Response: shortLink,
+		userid, shorturl, err := hs.useCase.CreateShortLink(ctx, dto)
+		if err != nil && err == repository.ErrLinkAlreadyExist {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "link already shortened",
+			})
+		} else if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+		}
+		c.SetCookie(
+			"token",
+			string(auth.CreateToken(userid)),
+			3600,
+			"",
+			"",
+			false,
+			false,
+		)
+		c.Writer.WriteHeader(http.StatusCreated)
+		c.Writer.Write([]byte(shorturl))
 	}
-
-	rawShortLink, err := json.Marshal(ValueOut)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
-
-	c.Writer.Header().Set("content-type", "application/json")
-	c.Writer.WriteHeader(http.StatusCreated)
-	_, err = c.Writer.Write(rawShortLink)
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
