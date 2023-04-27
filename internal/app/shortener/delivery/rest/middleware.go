@@ -3,18 +3,11 @@ package rest
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
-)
 
-//type CustomRC struct {
-//	io.Reader
-//}
-//
-//func (c *CustomRC) Close() error {
-//	return nil
-//}
+	"github.com/gin-gonic/gin"
+)
 
 type CustomRW struct {
 	gin.ResponseWriter

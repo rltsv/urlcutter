@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
-	"github.com/rltsv/urlcutter/internal/app/config"
 	"strings"
 	"sync"
+
+	"github.com/rltsv/urlcutter/internal/app/config"
 )
 
 type Storage struct {
