@@ -53,45 +53,56 @@ func (s *FileStorage) GetLinkFromFileStorage(ctx context.Context, dto entity.Lin
 
 	scanner := bufio.NewScanner(file)
 
-	//
-	//	for scanner.Scan() {
-	//		err = json.Unmarshal(scanner.Bytes(), &link)
-	//		if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//
-	//		if link.ID == id {
-	//			return link, nil
-	//		} else {
-	//			continue
-	//		}
-	//	}
-	//	return ValueToFile{}, ErrLinkNotFound
-	//}
-	//
-	//func (s *FileStorage) CheckLinkInFileStorage(ctx context.Context, longLink string) (id int, err error) {
-	//	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	//	if err != nil {
-	//		log.Print("error while open file for storage")
-	//	}
-	//	defer file.Close()
-	//
-	//	scanner := bufio.NewScanner(file)
-	//
-	//	link := ValueToFile{}
-	//
-	//	for scanner.Scan() {
-	//
-	//		err = json.Unmarshal(scanner.Bytes(), &link)
-	//		if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//
-	//		if link.LongLink == longLink {
-	//			return link.ID, nil
-	//		}
-	//	}
-	return longurl, err
+	for scanner.Scan() {
+		link := entity.Link{}
+		err = json.Unmarshal(scanner.Bytes(), &link)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if link.LinkID == dto.LinkID && link.UserID == dto.UserID {
+			longurl = link.LongURL
+			break
+		} else {
+			continue
+		}
+	}
+
+	if longurl == "" {
+		return longurl, ErrLinkNotFound
+	} else {
+		return longurl, nil
+	}
+}
+
+func (s *FileStorage) GetLinksByUser(ctx context.Context, dto entity.Link) (links []entity.SendLinkDTO, err error) {
+	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		link := entity.Link{}
+		err = json.Unmarshal(scanner.Bytes(), &link)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if link.UserID == dto.UserID {
+			links = append(links, entity.SendLinkDTO{
+				ShortURL: link.ShortURL,
+				LongURL:  link.LongURL,
+			})
+		} else {
+			continue
+		}
+	}
+	if len(links) == 0 {
+		return nil, ErrLinkNotFound
+	}
+	return links, nil
 }
 
 func (s *FileStorage) checkLinkInByUser(file *os.File, dto entity.Link) bool {

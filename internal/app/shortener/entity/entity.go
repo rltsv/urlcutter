@@ -45,11 +45,3 @@ func GetAllLinks(dto GetAllLinksDTO) Link {
 		UserID: dto.UserID,
 	}
 }
-
-type InputData struct {
-	URL string `json:"url"`
-}
-
-type OutputData struct {
-	Response string `json:"result"`
-}

@@ -1,11 +1,12 @@
-package rest
+package middleware
 
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type CustomRW struct {
@@ -24,7 +25,7 @@ func NewCustomRW(ctx *gin.Context) *CustomRW {
 	}
 }
 
-func gzipHandler() gin.HandlerFunc {
+func Gzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		NewCRW := NewCustomRW(c)
 		c.Writer = NewCRW

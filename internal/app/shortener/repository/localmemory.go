@@ -5,10 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/rltsv/urlcutter/internal/app/config"
-	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"log"
 	"sync"
+
+	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
 type MemoryStorage struct {
@@ -127,6 +128,5 @@ func GenerateUserID() []byte {
 		log.Printf("error while generateUserID: %v\n", err)
 		return nil
 	}
-
 	return b
 }
