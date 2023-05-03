@@ -1,21 +1,26 @@
 package rest
 
 import (
-	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
-	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
-	"github.com/stretchr/testify/assert"
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"os"
 	"sync"
 	"testing"
+
+	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
+	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
+func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
+
 	type request struct {
-		URL  string
-		body string
+		URL    string
+		body   string
+		method string
 	}
 	type want struct {
 		body string
@@ -30,12 +35,12 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 		{
 			name: "test method post with correct initial data",
 			request: request{
-				URL:  "http://localhost:8080/",
-				body: "http://postman-echo.com/get",
+				URL:  "/api/shorten",
+				body: `{"url":"http://postman-echo.com/get"}`,
 			},
 			want: want{
-				code: 201,
-				body: "http://localhost:8080/1",
+				code: http.StatusCreated,
+				body: `{"result":"http://localhost:8000/1"}`,
 			},
 		},
 	}
@@ -43,13 +48,17 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
-			shortenerRepo := repository.NewLinksRepository()
-			shortenerUsecase := shortener.NewUsecase(shortenerRepo)
+			cfg := config.Config{
+				ServerAddress:   ":8000",
+				BaseURL:         "http://localhost:8000",
+				FileStoragePath: "memory.log",
+			}
+
+			shortenerRepo := repository.NewStorage(cfg)
+			shortenerUsecase := shortener.NewUsecase(*shortenerRepo, cfg)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
-			myReader := strings.NewReader(tc.request.body)
-
-			r := httptest.NewRequest(http.MethodPost, tc.request.URL, myReader)
+			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
 			w := httptest.NewRecorder()
 
 			router := SetupRouter(handler)
@@ -57,24 +66,21 @@ func TestHandlerShortener_HeadHandler_MethodPost(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-			res.Body.Close()
 
-			resBody, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
+			respBody, err := io.ReadAll(res.Body)
+			assert.NoError(t, err)
+			defer res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
-			assert.Equal(t, tc.want.body, string(resBody))
+			assert.Equal(t, tc.want.body, string(respBody))
 
+			os.Args = nil
 		})
 	}
-
 }
 
-func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
+func TestHandlerShortener_HeadHandlerGet(t *testing.T) {
 	type request struct {
-		body      string
 		shortLink string
 	}
 	type want struct {
@@ -88,9 +94,8 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 		want    want
 	}{
 		{
-			name: "test method get",
+			name: "good initial data",
 			request: request{
-				body:      "http://postman-echo.com/get",
 				shortLink: "/1",
 			},
 			want: want{
@@ -98,18 +103,35 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 				contentField: "http://postman-echo.com/get",
 			},
 		},
+		{
+			name: "wrong short link",
+			request: request{
+				shortLink: "/2",
+			},
+			want: want{
+				code:         http.StatusBadRequest,
+				contentField: "",
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			shortenerRepo := repository.LinksRepository{
-				Storage: map[int]string{
+
+			cfg := config.Config{
+				ServerAddress: ":8000",
+				BaseURL:       "http://localhost:8000",
+			}
+
+			shortenerRepo := repository.Storage{
+				InMemoryStorage: map[int]string{
 					1: "http://postman-echo.com/get",
 				},
-				IDCount: 1,
-				Mux:     new(sync.RWMutex),
+				IDCount:   0,
+				Mux:       new(sync.RWMutex),
+				AppConfig: cfg,
 			}
-			shortenerUsecase := shortener.NewUsecase(&shortenerRepo)
+			shortenerUsecase := shortener.NewUsecase(shortenerRepo, cfg)
 			handler := NewHandlerShortener(*shortenerUsecase)
 
 			r := httptest.NewRequest(http.MethodGet, tc.request.shortLink, nil)
@@ -119,7 +141,7 @@ func TestHandlerShortener_HeadHandler_MethodGet(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-			res.Body.Close()
+			defer res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
 			assert.Equal(t, tc.want.contentField, res.Header.Get("Location"))

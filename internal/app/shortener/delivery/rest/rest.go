@@ -1,20 +1,22 @@
 package rest
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
-	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
+	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
+	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 )
 
 type HandlerShortener struct {
-	useCase shortener.Usecase
+	useCase shortener.UsecaseShortener
 }
 
-func NewHandlerShortener(shortenerUseCase shortener.Usecase) *HandlerShortener {
+func NewHandlerShortener(shortenerUseCase shortener.UsecaseShortener) *HandlerShortener {
 	return &HandlerShortener{
 		useCase: shortenerUseCase,
 	}
@@ -26,24 +28,59 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 
 	respBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		http.Error(c.Writer, "specify the request", 400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 	defer c.Request.Body.Close()
 
 	if len(respBody) == 0 {
-		http.Error(c.Writer, "where is nothing to short, check body", 400)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
-
-	c.Writer.WriteHeader(201)
+	c.Writer.WriteHeader(http.StatusCreated)
 	_, err = c.Writer.Write([]byte(shortLink))
 	if err != nil {
-		http.Error(c.Writer, err.Error(), 500)
-		log.Fatal("", err)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
+	}
+}
+
+func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	rawValue, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	defer c.Request.Body.Close()
+
+	ValueIn := &entity.InputData{}
+	var shortLink string
+
+	if err := json.Unmarshal(rawValue, &ValueIn); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
+
+	ValueOut := entity.OutputData{
+		Response: shortLink,
+	}
+
+	rawShortLink, err := json.Marshal(ValueOut)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}
+
+	c.Writer.Header().Set("content-type", "application/json")
+	c.Writer.WriteHeader(http.StatusCreated)
+	_, err = c.Writer.Write(rawShortLink)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
 	}
 }
 
@@ -54,10 +91,9 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	origLink, err := hs.useCase.GetLinkByID(ctx, id)
-	if err == repository.ErrLinkNotFound {
-		http.Error(c.Writer, "there is no any link by this id", 400)
+	if err != nil && err == repository.ErrLinkNotFound {
+		c.AbortWithError(http.StatusBadRequest, err)
+	} else {
+		c.Redirect(http.StatusTemporaryRedirect, origLink)
 	}
-
-	c.Writer.Header().Set("Location", origLink)
-	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }
