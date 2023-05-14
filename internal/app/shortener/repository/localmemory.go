@@ -49,7 +49,7 @@ func CreateNewLink(baseurl string, dto entity.Link) *entity.Link {
 	}
 }
 
-func (s *MemoryStorage) SaveLinkInMemoryStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
+func (s *MemoryStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
 	s.Mux.Lock()
 	defer s.Mux.Unlock()
 
@@ -63,7 +63,7 @@ func (s *MemoryStorage) SaveLinkInMemoryStorage(ctx context.Context, dto entity.
 	return link.UserID, link.ShortURL, nil
 }
 
-func (s *MemoryStorage) GetLinkFromInMemoryStorage(ctx context.Context, dto entity.Link) (longurl string, err error) {
+func (s *MemoryStorage) GetLink(ctx context.Context, dto entity.Link) (longurl string, err error) {
 	s.Mux.RLock()
 	defer s.Mux.RUnlock()
 

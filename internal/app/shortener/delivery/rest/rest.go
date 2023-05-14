@@ -1,9 +1,11 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
@@ -38,7 +40,13 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 		})
 		return
 	}
-	shortLinkBytes, err := json.Marshal(shortLink)
+	bytesOut := struct {
+		ShortLink string `json:"shortlink"`
+	}{
+		ShortLink: shortLink,
+	}
+
+	shortLinkBytes, err := json.Marshal(bytesOut)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "failed while marshal string",
@@ -68,8 +76,13 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		})
 		return
 	}
+	bytesOut := struct {
+		ShortLink string `json:"shortlink"`
+	}{
+		ShortLink: shortlink,
+	}
 
-	shortLinkBytes, err := json.Marshal(shortlink)
+	shortLinkBytes, err := json.Marshal(bytesOut)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "failed while marshal string",
@@ -157,4 +170,19 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 	c.Writer.Header().Set("content-type", "application/json")
 	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
 	c.Writer.Write(linksBytes)
+}
+
+func (hs *HandlerShortener) Ping(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Second*10)
+	defer cancel()
+
+	err := hs.useCase.Ping(ctx)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "failed while pinging database",
+		})
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusCreated)
 }

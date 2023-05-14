@@ -13,6 +13,7 @@ func SetupRouter(handler *HandlerShortener) *gin.Engine {
 	router.POST("/api/shorten", handler.CreateShortLinkViaJSON)
 	router.GET("/:id", handler.GetLinkByID)
 	router.GET("/api/user/urls", handler.GetLinksByUser)
+	router.GET("/ping", handler.Ping)
 
 	return router
 }

@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"github.com/rltsv/urlcutter/internal/app/config"
-	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
 type FileStorage struct {
@@ -25,7 +26,7 @@ func NewFileStorage(cfg config.Config) *FileStorage {
 	}
 }
 
-func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
+func (s *FileStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
 	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		return userid, shorturl, err
@@ -44,7 +45,7 @@ func (s *FileStorage) SaveLinkInFileStorage(ctx context.Context, dto entity.Link
 	}
 }
 
-func (s *FileStorage) GetLinkFromFileStorage(ctx context.Context, dto entity.Link) (longurl string, err error) {
+func (s *FileStorage) GetLink(ctx context.Context, dto entity.Link) (longurl string, err error) {
 	file, err := os.OpenFile(s.appConfig.FileStoragePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		return longurl, err

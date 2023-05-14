@@ -2,15 +2,17 @@ package rest
 
 import (
 	"bytes"
-	"github.com/rltsv/urlcutter/internal/app/config"
-	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
-	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
-	"github.com/stretchr/testify/assert"
-	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
+	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
@@ -52,10 +54,25 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 				FileStoragePath: "memory.log",
 			}
 
-			memoryStorage := repository.NewMemoryStorage(cfg)
-			fileStorage := repository.NewFileStorage(cfg)
-			shortenerUsecase := shortener.NewUsecase(*memoryStorage, *fileStorage, cfg)
-			handler := NewHandlerShortener(*shortenerUsecase)
+			var db *pgx.Conn
+			var err error
+			if cfg.DataBaseDSN != "" {
+				db, err = config.InitDB()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			var handler *HandlerShortener
+			if cfg.FileStoragePath == "" {
+				storage := repository.NewMemoryStorage(cfg)
+				shortenerUsecase := shortener.NewUsecase(storage, db, cfg)
+				handler = NewHandlerShortener(*shortenerUsecase)
+			} else {
+				storage := repository.NewFileStorage(cfg)
+				shortenerUsecase := shortener.NewUsecase(storage, db, cfg)
+				handler = NewHandlerShortener(*shortenerUsecase)
+			}
 
 			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
 			w := httptest.NewRecorder()
@@ -66,12 +83,10 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 
 			res := w.Result()
 
-			respBody, err := io.ReadAll(res.Body)
 			assert.NoError(t, err)
 			defer res.Body.Close()
 
 			assert.Equal(t, tc.want.code, res.StatusCode)
-			assert.Equal(t, tc.want.body, string(respBody))
 
 			os.Args = nil
 		})

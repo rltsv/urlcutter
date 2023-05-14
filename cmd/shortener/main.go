@@ -17,10 +17,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	memoryStorage := repository.NewMemoryStorage(cfg)
-	fileStorage := repository.NewFileStorage(cfg)
-	shortenerUsecase := shortener.NewUsecase(memoryStorage, fileStorage, cfg)
-	handler := rest.NewHandlerShortener(*shortenerUsecase)
+	var dbStorage *repository.PsqlStorage
+	if cfg.DataBaseDSN != "" {
+		db, err := config.InitDB(cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		dbStorage = repository.NewPsqlStorage(db)
+	}
+
+	var handler *rest.HandlerShortener
+	if cfg.FileStoragePath == "" {
+		storage := repository.NewMemoryStorage(cfg)
+		shortenerUsecase := shortener.NewUsecase(storage, dbStorage, cfg)
+		handler = rest.NewHandlerShortener(*shortenerUsecase)
+	} else {
+		storage := repository.NewFileStorage(cfg)
+		shortenerUsecase := shortener.NewUsecase(storage, dbStorage, cfg)
+		handler = rest.NewHandlerShortener(*shortenerUsecase)
+	}
 
 	router := rest.SetupRouter(handler)
 
