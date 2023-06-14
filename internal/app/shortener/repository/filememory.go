@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"sync"
@@ -36,12 +37,11 @@ func (s *FileStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, sh
 	if ok := s.checkLinkInByUser(file, dto); ok {
 		return userid, shorturl, ErrLinkAlreadyExist
 	}
-	link := CreateNewLink(s.appConfig.BaseURL, dto)
 
-	if err = json.NewEncoder(file).Encode(&link); err != nil {
+	if err = json.NewEncoder(file).Encode(&dto); err != nil {
 		return userid, shorturl, err
 	} else {
-		return link.UserID, link.ShortURL, nil
+		return dto.UserID, dto.ShortURL, nil
 	}
 }
 
@@ -62,7 +62,7 @@ func (s *FileStorage) GetLink(ctx context.Context, dto entity.Link) (longurl str
 		}
 
 		if link.LinkID == dto.LinkID && link.UserID == dto.UserID {
-			longurl = link.LongURL
+			longurl = link.OriginalURL
 			break
 		} else {
 			continue
@@ -93,8 +93,8 @@ func (s *FileStorage) GetLinksByUser(ctx context.Context, dto entity.Link) (link
 		}
 		if link.UserID == dto.UserID {
 			links = append(links, entity.SendLinkDTO{
-				ShortURL: link.ShortURL,
-				LongURL:  link.LongURL,
+				ShortURL:    link.ShortURL,
+				OriginalURL: link.OriginalURL,
 			})
 		} else {
 			continue
@@ -114,9 +114,13 @@ func (s *FileStorage) checkLinkInByUser(file *os.File, dto entity.Link) bool {
 		if err != nil {
 			log.Print("failed while decode line in struct while scan")
 		}
-		if link.LongURL == dto.LongURL && link.UserID == dto.UserID {
+		if link.OriginalURL == dto.OriginalURL && link.UserID == dto.UserID {
 			return true
 		}
 	}
 	return false
+}
+
+func (s *FileStorage) Ping(ctx context.Context) error {
+	return errors.New("there is no db in this configuration")
 }

@@ -3,8 +3,10 @@ package config
 import (
 	"context"
 	"flag"
+	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/jackc/pgx/v5"
@@ -77,6 +79,30 @@ func InitDB(cfg Config) (conn *pgx.Conn, err error) {
 	conn, err = pgx.Connect(context.Background(), cfg.DataBaseDSN)
 	if err != nil {
 		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	var connection = "ok"
+	err = conn.Ping(ctx)
+	if err != nil {
+		connection = "false"
+	}
+	log.Printf("connection to db is %s", connection)
+
+	file, err := os.OpenFile("db.sql", os.O_RDONLY, 0777)
+	if err != nil {
+		log.Println(err)
+	}
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, err = conn.Exec(ctx, string(bytes))
+	if err != nil {
+		log.Print(err)
 	}
 
 	return conn, nil

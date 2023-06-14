@@ -1,15 +1,17 @@
 package entity
 
 type Link struct {
-	LinkID   string `json:"link_id"`
-	UserID   string `json:"user_id"`
-	LongURL  string `json:"long_url,omitempty"`
-	ShortURL string `json:"short_url,omitempty"`
+	LinkID        string `json:"link_id"`
+	UserID        string `json:"user_id"`
+	OriginalURL   string `json:"original_url,omitempty"`
+	ShortURL      string `json:"short_url,omitempty"`
+	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
 type CreateLinkDTO struct {
-	UserID  string `json:"user_id"`
-	LongURL string `json:"long_url"`
+	UserID        string `json:"user_id"`
+	OriginalURL   string `json:"original_url,omitempty"`
+	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
 type GetLinkDTO struct {
@@ -22,14 +24,15 @@ type GetAllLinksDTO struct {
 }
 
 type SendLinkDTO struct {
-	ShortURL string `json:"short_url,omitempty"`
-	LongURL  string `json:"long_url,omitempty"`
+	ShortURL      string `json:"short_url,omitempty"`
+	OriginalURL   string `json:"original_url,omitempty"`
+	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
 func NewLink(dto CreateLinkDTO) Link {
 	return Link{
-		UserID:  dto.UserID,
-		LongURL: dto.LongURL,
+		UserID:      dto.UserID,
+		OriginalURL: dto.OriginalURL,
 	}
 }
 

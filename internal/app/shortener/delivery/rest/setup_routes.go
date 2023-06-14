@@ -11,6 +11,7 @@ func SetupRouter(handler *HandlerShortener) *gin.Engine {
 
 	router.POST("/", handler.CreateShortLink)
 	router.POST("/api/shorten", handler.CreateShortLinkViaJSON)
+	router.POST("/api/shorten/batch", handler.BatchShortener)
 	router.GET("/:id", handler.GetLinkByID)
 	router.GET("/api/user/urls", handler.GetLinksByUser)
 	router.GET("/ping", handler.Ping)

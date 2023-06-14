@@ -1,17 +1,14 @@
 package middleware
 
 import (
-	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
-	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
 func CheckCookie() gin.HandlerFunc {
@@ -27,45 +24,11 @@ func CheckCookie() gin.HandlerFunc {
 			userid = auth.DecryptToken(cookie)
 		}
 
-		switch c.ContentType() {
-		case "text/plain":
-			body, err := io.ReadAll(c.Request.Body)
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-					"message": "failed while read body",
-				})
-			}
-			dto := entity.CreateLinkDTO{
-				UserID:  userid,
-				LongURL: string(body),
-			}
-
-			dtoBytes, err := json.Marshal(&dto)
-			if err != nil {
-				log.Print(err)
-			}
-
-			c.Request.Body = io.NopCloser(bytes.NewReader(dtoBytes))
-
-		case "application/json":
-			var dto entity.CreateLinkDTO
-
-			if err = c.ShouldBindJSON(&dto); err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-					"message": "failed while parse json",
-				})
-			}
-
-			dto.UserID = userid
-			dtoBytes, err := json.Marshal(&dto)
-			if err != nil {
-				log.Print(err)
-			}
-			c.Request.Body = io.NopCloser(bytes.NewReader(dtoBytes))
-		}
+		ctx := context.WithValue(c.Request.Context(), "userid", userid)
+		ctxWithVal := c.Request.WithContext(ctx)
+		c.Request = ctxWithVal
 
 		c.Next()
-
 	}
 }
 

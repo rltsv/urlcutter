@@ -28,7 +28,9 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	dto.UserID = c.Request.Context().Value("userid").(string)
+
+	if err := c.Bind(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -64,6 +66,8 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
+	dto.UserID = c.Request.Context().Value("userid").(string)
+	log.Println(dto)
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -185,4 +189,26 @@ func (hs *HandlerShortener) Ping(c *gin.Context) {
 	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
+}
+
+func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
+	//ctx := c.Request.Context()
+
+	var request []entity.CreateLinkDTO
+
+	err := c.ShouldBind(&request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while parse request body",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	for idx, _ := range request {
+		request[idx].UserID = c.Request.Context().Value("userid").(string)
+	}
+
+	//hs.useCase.BatchShortener(ctx, request)
+
 }
