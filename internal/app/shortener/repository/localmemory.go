@@ -86,5 +86,5 @@ func (s *MemoryStorage) CheckUserInMemory(dto entity.Link) (ok bool) {
 }
 
 func (s *MemoryStorage) Ping(ctx context.Context) error {
-	return errors.New("there is no db in this configuration")
+	return errors.New("there is no management system for db in this configuration")
 }

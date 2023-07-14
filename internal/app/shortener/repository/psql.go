@@ -24,36 +24,30 @@ func (ps *PsqlStorage) Ping(ctx context.Context) error {
 
 func (ps *PsqlStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
 
-	query := `INSERT INTO links (link_id, user_id, original_url, short_url) VALUES ($1,$2,$3,$4);`
+	query := `INSERT INTO links (link_id, user_id, original_url, short_url, correlation_id) VALUES ($1,$2,$3,$4,$5);`
 
-	_, err = ps.db.Exec(ctx, query, dto.LinkID, dto.UserID, dto.OriginalURL, dto.ShortURL)
-	if err != nil {
-		log.Print(err)
+	_, err = ps.CheckOriginalURLInMemory(ctx, dto)
+	if err != nil && err == ErrLinkNotFound {
+		_, err = ps.db.Exec(ctx, query, dto.LinkID, dto.UserID, dto.OriginalURL, dto.ShortURL, dto.CorrelationID)
+		if err != nil {
+			return "", "", err
+		}
+
+		return dto.UserID, dto.ShortURL, nil
 	}
-
-	return dto.UserID, dto.ShortURL, nil
+	return "", "", ErrLinkAlreadyExist
 }
 
 func (ps *PsqlStorage) GetLink(ctx context.Context, dto entity.Link) (longurl string, err error) {
 
 	query := `SELECT original_url FROM links WHERE link_id = $1 AND user_id = $2`
 
-	row, err := ps.db.Query(ctx, query, dto.LinkID, dto.UserID)
-	if err != nil {
-		log.Print(err)
-	}
+	row := ps.db.QueryRow(ctx, query, dto.LinkID, dto.UserID)
 
-	for row.Next() {
-		err = row.Scan(&longurl)
-		if err != nil {
-			return "", err
-		}
-		err = row.Err()
-		if err != nil {
-			log.Print(err)
-		}
+	err = row.Scan(&longurl)
+	if err != nil && err == pgx.ErrNoRows {
+		return "", ErrLinkNotFound
 	}
-
 	return longurl, nil
 }
 
@@ -80,4 +74,16 @@ func (ps *PsqlStorage) GetLinksByUser(ctx context.Context, dto entity.Link) (lin
 	}
 
 	return links, nil
+}
+
+func (ps *PsqlStorage) CheckOriginalURLInMemory(ctx context.Context, dto entity.Link) (longurl string, err error) {
+	query := `SELECT short_url FROM links WHERE original_url = $1 AND user_id = $2`
+
+	row := ps.db.QueryRow(ctx, query, dto.OriginalURL, dto.UserID)
+
+	err = row.Scan(&longurl)
+	if err != nil && err == pgx.ErrNoRows {
+		return "", ErrLinkNotFound
+	}
+	return longurl, nil
 }

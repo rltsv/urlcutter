@@ -2,45 +2,51 @@ package rest
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/rltsv/urlcutter/internal/app/config"
+	cfg "github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
-
+func TestHandlerShortener_CreateShortLinkViaJSON(t *testing.T) {
 	type request struct {
-		URL    string
-		body   string
-		method string
+		requestURL    string
+		requestBody   string
+		requestMethod string
+	}
+	type config struct {
+		serverAddress   string
+		baseURL         string
+		fileStoragePath string
 	}
 	type want struct {
-		body string
-		code int
+		statusCode int
 	}
 
 	tests := []struct {
 		name    string
 		request request
+		config  config
 		want    want
 	}{
 		{
-			name: "test method post with correct initial data",
+			name: "request short link with correct initial data",
 			request: request{
-				URL:  "/api/shorten",
-				body: `{"url":"http://postman-echo.com/get"}`,
+				requestURL:  "/api/shorten",
+				requestBody: `{"url":"http://postman-echo.com/get"}`,
+			},
+			config: config{
+				serverAddress:   ":8080",
+				baseURL:         "http://localhost:8080",
+				fileStoragePath: "memory.log",
 			},
 			want: want{
-				code: http.StatusCreated,
-				body: `{"result":"http://localhost:8000/1"}`,
+				statusCode: http.StatusCreated,
 			},
 		},
 	}
@@ -48,33 +54,24 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 
-			cfg := config.Config{
-				ServerAddress:   ":8000",
-				BaseURL:         "http://localhost:8000",
-				FileStoragePath: "memory.log",
-			}
-
-			var db *pgx.Conn
-			var err error
-			if cfg.DataBaseDSN != "" {
-				db, err = config.InitDB()
-				if err != nil {
-					log.Fatal(err)
-				}
+			initConfig := cfg.Config{
+				ServerAddress:   tc.config.serverAddress,
+				BaseURL:         tc.config.baseURL,
+				FileStoragePath: tc.config.fileStoragePath,
 			}
 
 			var handler *HandlerShortener
-			if cfg.FileStoragePath == "" {
-				storage := repository.NewMemoryStorage(cfg)
-				shortenerUsecase := shortener.NewUsecase(storage, db, cfg)
+			if tc.config.fileStoragePath == "" {
+				storage := repository.NewMemoryStorage(initConfig)
+				shortenerUsecase := shortener.NewUsecase(storage, initConfig)
 				handler = NewHandlerShortener(*shortenerUsecase)
 			} else {
-				storage := repository.NewFileStorage(cfg)
-				shortenerUsecase := shortener.NewUsecase(storage, db, cfg)
+				storage := repository.NewFileStorage(initConfig)
+				shortenerUsecase := shortener.NewUsecase(storage, initConfig)
 				handler = NewHandlerShortener(*shortenerUsecase)
 			}
 
-			r := httptest.NewRequest(http.MethodPost, tc.request.URL, bytes.NewBufferString(tc.request.body))
+			r := httptest.NewRequest(http.MethodPost, tc.request.requestURL, bytes.NewReader([]byte(tc.request.requestBody)))
 			w := httptest.NewRecorder()
 
 			router := SetupRouter(handler)
@@ -82,13 +79,13 @@ func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
 			router.ServeHTTP(w, r)
 
 			res := w.Result()
-
-			assert.NoError(t, err)
 			defer res.Body.Close()
 
-			assert.Equal(t, tc.want.code, res.StatusCode)
+			assert.Equal(t, tc.want.statusCode, res.StatusCode)
 
 			os.Args = nil
+
+			os.Remove(tc.config.fileStoragePath)
 		})
 	}
 }

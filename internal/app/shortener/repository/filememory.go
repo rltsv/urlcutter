@@ -122,5 +122,5 @@ func (s *FileStorage) checkLinkInByUser(file *os.File, dto entity.Link) bool {
 }
 
 func (s *FileStorage) Ping(ctx context.Context) error {
-	return errors.New("there is no db in this configuration")
+	return errors.New("there is no management system for db in this configuration")
 }

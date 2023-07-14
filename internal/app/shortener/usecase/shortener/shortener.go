@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 
@@ -45,21 +46,30 @@ func (u *UsecaseShortener) Ping(ctx context.Context) error {
 	return u.storage.Ping(ctx)
 }
 
-//func (u *UsecaseShortener) BatchShortener(ctx context.Context, dto []entity.CreateLinkDTO) error {
-//	var link entity.Link
-//	var linkResponse []entity.SendLinkDTO
-//	for _, val := range dto {
-//		link.CorrelationID = val.CorrelationID
-//		link.OriginalURL = val.OriginalURL
-//		link.UserID = val.UserID
-//
-//		userid, shorturl, err := u.storage.SaveLink(ctx, link)
-//		if err != nil {
-//			return err
-//		}
-//
-//	}
-//}
+func (u *UsecaseShortener) BatchShortener(ctx context.Context, dto []entity.CreateLinkDTO) ([]entity.SendLinkDTO, error) {
+	var response []entity.SendLinkDTO
+	for _, val := range dto {
+		// bring it to the link type
+		link := entity.NewLink(val)
+		// creating a link entity with all the necessary fields
+		linkToSave := CreateNewLink(u.appConfig.BaseURL, link)
+
+		_, shorturl, err := u.storage.SaveLink(ctx, *linkToSave)
+		switch err {
+		case repository.ErrLinkAlreadyExist:
+			continue
+		case nil:
+			response = append(response, entity.SendLinkDTO{
+				CorrelationID: link.CorrelationID,
+				ShortURL:      shorturl,
+			})
+		}
+	}
+	if response == nil {
+		return nil, errors.New("received links already shorten")
+	}
+	return response, nil
+}
 
 // CreateNewLink create new instance of link
 func CreateNewLink(baseurl string, dto entity.Link) *entity.Link {
@@ -68,18 +78,20 @@ func CreateNewLink(baseurl string, dto entity.Link) *entity.Link {
 	switch {
 	case dto.UserID != "":
 		return &entity.Link{
-			LinkID:      encodedLinkID,
-			UserID:      dto.UserID,
-			OriginalURL: dto.OriginalURL,
-			ShortURL:    fmt.Sprintf("%s/%s", baseurl, encodedLinkID),
+			LinkID:        encodedLinkID,
+			UserID:        dto.UserID,
+			OriginalURL:   dto.OriginalURL,
+			ShortURL:      fmt.Sprintf("%s/%s", baseurl, encodedLinkID),
+			CorrelationID: dto.CorrelationID,
 		}
 	default:
 		encodedUserID := hex.EncodeToString(GenerateUserID())
 		return &entity.Link{
-			LinkID:      encodedLinkID,
-			UserID:      encodedUserID,
-			OriginalURL: dto.OriginalURL,
-			ShortURL:    fmt.Sprintf("%s/%s", baseurl, encodedLinkID),
+			LinkID:        encodedLinkID,
+			UserID:        encodedUserID,
+			OriginalURL:   dto.OriginalURL,
+			ShortURL:      fmt.Sprintf("%s/%s", baseurl, encodedLinkID),
+			CorrelationID: dto.CorrelationID,
 		}
 	}
 }

@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -29,16 +30,21 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	var dto entity.CreateLinkDTO
 
 	dto.UserID = c.Request.Context().Value("userid").(string)
-
-	if err := c.Bind(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	rawBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while read request body",
+			"error":   err.Error(),
+		})
 		return
 	}
+	// format raw data from request body to string type and assign it to dto field
+	dto.OriginalURL = string(rawBody)
 
 	userid, shortLink, err := hs.useCase.CreateShortLink(ctx, dto)
 	if err != nil && err == repository.ErrLinkAlreadyExist {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "link already shortened",
+			"message": "this link already shortened",
 		})
 		return
 	}
@@ -67,7 +73,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	var dto entity.CreateLinkDTO
 
 	dto.UserID = c.Request.Context().Value("userid").(string)
-	log.Println(dto)
+
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -76,7 +82,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	userid, shortlink, err := hs.useCase.CreateShortLink(ctx, dto)
 	if err != nil && err == repository.ErrLinkAlreadyExist {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "link already shortened",
+			"message": "this link already shortened",
 		})
 		return
 	}
@@ -181,18 +187,25 @@ func (hs *HandlerShortener) Ping(c *gin.Context) {
 	defer cancel()
 
 	err := hs.useCase.Ping(ctx)
-	if err != nil {
+	if err != nil && err.Error() == "there is no management system for db in this configuration" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while pinging database",
+			"error":   err.Error(),
+		})
+		return
+	} else if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"message": "failed while pinging database",
+			"error":   err.Error(),
 		})
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusCreated)
+	c.Writer.WriteHeader(http.StatusOK)
 }
 
 func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
-	//ctx := c.Request.Context()
+	ctx := c.Request.Context()
 
 	var request []entity.CreateLinkDTO
 
@@ -205,10 +218,19 @@ func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 		return
 	}
 
+	userid := c.Request.Context().Value("userid").(string)
+
 	for idx, _ := range request {
-		request[idx].UserID = c.Request.Context().Value("userid").(string)
+		request[idx].UserID = userid
 	}
 
-	//hs.useCase.BatchShortener(ctx, request)
-
+	listOfShortUrls, err := hs.useCase.BatchShortener(ctx, request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.JSON(http.StatusOK, listOfShortUrls)
 }
