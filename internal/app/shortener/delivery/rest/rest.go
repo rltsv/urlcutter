@@ -175,6 +175,12 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 	}
 
 	linksBytes, err := json.Marshal(&links)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while marshal string",
+		})
+		return
+	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
 	c.Writer.Header().Set("content-type", "application/json")
@@ -220,7 +226,7 @@ func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 
 	userid := c.Request.Context().Value("userid").(string)
 
-	for idx, _ := range request {
+	for idx := range request {
 		request[idx].UserID = userid
 	}
 
