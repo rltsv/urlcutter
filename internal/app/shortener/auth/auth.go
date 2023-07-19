@@ -37,6 +37,10 @@ func CreateToken(userID string) (token []byte) {
 func DecryptToken(token *http.Cookie) (userID string) {
 	tokenValue := token.Value
 	value, err := url.QueryUnescape(tokenValue)
+	if err != nil {
+		fmt.Printf("error1: %v\n", err)
+		return
+	}
 
 	aesblock, err := aes.NewCipher(SecretKey)
 	if err != nil {
