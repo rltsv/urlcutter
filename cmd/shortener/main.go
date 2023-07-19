@@ -16,6 +16,9 @@ func main() {
 	}
 
 	router, err := server.InitApp(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Printf("http server startup address is %s", cfg.ServerAddress)
 	log.Printf("the base address of the resulting shortened URL : %s", cfg.BaseURL)
