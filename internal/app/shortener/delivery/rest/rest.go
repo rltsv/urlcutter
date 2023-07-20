@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
+	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/middleware"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
@@ -29,7 +30,8 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	dto.UserID = c.Request.Context().Value("userid").(string)
+	key := middleware.CookieContextKey("userid")
+	dto.UserID = c.Request.Context().Value(key).(string)
 	rawBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -72,7 +74,8 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	dto.UserID = c.Request.Context().Value("userid").(string)
+	key := middleware.CookieContextKey("userid")
+	dto.UserID = c.Request.Context().Value(key).(string)
 
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -224,7 +227,8 @@ func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 		return
 	}
 
-	userid := c.Request.Context().Value("userid").(string)
+	key := middleware.CookieContextKey("userid")
+	userid := c.Request.Context().Value(key).(string)
 
 	for idx := range request {
 		request[idx].UserID = userid
