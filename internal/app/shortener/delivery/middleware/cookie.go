@@ -11,6 +11,10 @@ import (
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
 )
 
+const (
+	cookieKey = "userid"
+)
+
 func CheckCookie() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var userid string
@@ -23,8 +27,7 @@ func CheckCookie() gin.HandlerFunc {
 		} else {
 			userid = auth.DecryptToken(cookie)
 		}
-
-		ctx := context.WithValue(c.Request.Context(), "userid", userid)
+		ctx := context.WithValue(c.Request.Context(), cookieKey, userid)
 		ctxWithVal := c.Request.WithContext(ctx)
 		c.Request = ctxWithVal
 

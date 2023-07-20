@@ -37,16 +37,19 @@ func CreateToken(userID string) (token []byte) {
 func DecryptToken(token *http.Cookie) (userID string) {
 	tokenValue := token.Value
 	value, err := url.QueryUnescape(tokenValue)
-
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
 	aesblock, err := aes.NewCipher(SecretKey)
 	if err != nil {
-		fmt.Printf("error2: %v\n", err)
+		fmt.Printf("error: %v\n", err)
 		return
 	}
 
 	aesgcm, err := cipher.NewGCM(aesblock)
 	if err != nil {
-		fmt.Printf("error3: %v\n", err)
+		fmt.Printf("error: %v\n", err)
 		return
 	}
 
@@ -54,7 +57,7 @@ func DecryptToken(token *http.Cookie) (userID string) {
 
 	userid, err := aesgcm.Open(nil, nonce, []byte(value), nil)
 	if err != nil {
-		fmt.Printf("error4: %v\n", err)
+		fmt.Printf("error: %v\n", err)
 		return
 	}
 	return string(userid)
