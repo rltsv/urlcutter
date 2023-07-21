@@ -2,7 +2,7 @@ package entity
 
 type CreateLinkDTO struct {
 	UserID        string `json:"user_id"`
-	OriginalURL   string `json:"original_url,omitempty"`
+	OriginalURL   string `json:"url,original_url,omitempty"`
 	CorrelationID string `json:"correlation_id,omitempty"`
 }
 

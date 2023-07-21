@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/rltsv/urlcutter/internal/app/config"
@@ -34,6 +35,7 @@ func (s *MemoryStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, 
 	}
 
 	s.Links = append(s.Links, dto)
+	log.Println(s.Links)
 	return dto.UserID, dto.ShortURL, nil
 }
 

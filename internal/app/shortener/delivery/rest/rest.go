@@ -77,7 +77,7 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	key := middleware.CookieContextKey("userid")
 	dto.UserID = c.Request.Context().Value(key).(string)
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
+	if err := c.BindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

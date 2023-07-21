@@ -14,7 +14,7 @@ import (
 
 type Config struct {
 	ServerAddress   string `env:"SERVER_ADDRESS" envDefault:":8080"`
-	BaseURL         string `env:"BASE_URL" envDefault:"http://localhost:8080"`
+	BaseURL         string `env:"BASE_URL" envDefault:"https://localhost:8080"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DataBaseDSN     string `env:"DATABASE_DSN"`
 }
@@ -28,7 +28,7 @@ func InitConfig() (cfg Config, err error) {
 	filePath := flag.String("f", "", "the path to the file with the abbreviated URL")
 	db := flag.String("d", "", "address for connection to db")
 	flag.Parse()
-	
+
 	err = env.Parse(&config)
 	if err != nil {
 		return Config{}, err
