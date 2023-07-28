@@ -46,6 +46,7 @@ func (ps *PsqlStorage) GetLink(ctx context.Context, dto entity.Link) (longurl st
 
 	err = row.Scan(&longurl)
 	if err != nil && err == pgx.ErrNoRows {
+		log.Println(err)
 		return "", ErrLinkNotFound
 	}
 	return longurl, nil

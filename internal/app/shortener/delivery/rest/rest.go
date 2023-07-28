@@ -30,8 +30,7 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	key := middleware.CookieContextKey("userid")
-	dto.UserID = c.Request.Context().Value(key).(string)
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
 	rawBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -50,32 +49,17 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 		})
 		return
 	}
-	bytesOut := struct {
-		ShortLink string `json:"shortlink"`
-	}{
-		ShortLink: shortLink,
-	}
-
-	shortLinkBytes, err := json.Marshal(bytesOut)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while marshal string",
-		})
-		return
-	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
-	c.Writer.Header().Set("content-type", "application/json")
 	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
-	c.Writer.Write(shortLinkBytes)
+	c.Writer.Write([]byte(shortLink))
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	key := middleware.CookieContextKey("userid")
-	dto.UserID = c.Request.Context().Value(key).(string)
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
 
 	if err := c.BindJSON(&dto); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -89,49 +73,26 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		})
 		return
 	}
-	bytesOut := struct {
-		ShortLink string `json:"shortlink"`
-	}{
-		ShortLink: shortlink,
-	}
-
-	shortLinkBytes, err := json.Marshal(bytesOut)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while marshal string",
-		})
-		return
-	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
-	c.Writer.Header().Set("content-type", "application/json")
 	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
-	c.Writer.Write(shortLinkBytes)
+	c.Writer.Write([]byte(shortlink))
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	ctx := c.Request.Context()
+	var dto entity.GetLinkDTO
 
-	cookie, err := c.Request.Cookie("token")
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while grab cookie from request",
-		})
-		return
-	}
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
 
-	userID := auth.DecryptToken(cookie)
-	linkID := c.Param("id")
-	if linkID == "" {
+	dto.LinkID = c.Param("id")
+	if dto.LinkID == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "check id path of url",
 		})
 	}
 
-	dto := entity.GetLinkDTO{
-		UserID: userID,
-		LinkID: linkID,
-	}
+	log.Printf("%+v", dto)
 
 	longLink, err := hs.useCase.GetLinkByUserID(ctx, dto)
 	if err != nil && err == repository.ErrLinkNotFound {
@@ -151,23 +112,11 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 
 func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 	ctx := c.Request.Context()
+	dto := entity.GetAllLinksDTO{}
 
-	cookie, err := c.Request.Cookie("token")
-	if err != nil {
-		switch err {
-		case http.ErrNoCookie:
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"message": "there is no shortened links by this user",
-			})
-			return
-		default:
-			c.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-	}
-	userid := auth.DecryptToken(cookie)
+	userid := c.Request.Context().Value(middleware.CookieKey).(string)
+	dto.UserID = userid
 
-	dto := entity.GetAllLinksDTO{UserID: userid}
 	links, err := hs.useCase.GetLinksByUser(ctx, dto)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -218,17 +167,17 @@ func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 
 	var request []entity.CreateLinkDTO
 
-	err := c.ShouldBind(&request)
+	err := c.Bind(&request)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "failed while parse request body",
 			"error":   err.Error(),
 		})
+		log.Println(err)
 		return
 	}
 
-	key := middleware.CookieContextKey("userid")
-	userid := c.Request.Context().Value(key).(string)
+	userid := c.Request.Context().Value(middleware.CookieKey).(string)
 
 	for idx := range request {
 		request[idx].UserID = userid
@@ -241,6 +190,7 @@ func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 		})
 		return
 	}
+
 	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
-	c.JSON(http.StatusOK, listOfShortUrls)
+	c.JSON(http.StatusCreated, listOfShortUrls)
 }

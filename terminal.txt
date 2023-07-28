@@ -1,0 +1,12 @@
+#11
+cd cmd/shortener; rm shortener & go build -o .; cd ../../; \
+../urlcutter_tests/shortenertest-darwin-arm64 -test.v -test.run=^TestIteration11$ \
+-binary-path=cmd/shortener/shortener \
+-database-dsn='postgres://postgres:postgres@postgres:5432/shortener?sslmode=disable'
+
+
+#12
+ cd cmd/shortener; rm shortener & go build -o .; cd ../../; \
+../urlcutter_tests/shortenertest-darwin-arm64 -test.v -test.run=^TestIteration12$ \
+-binary-path=cmd/shortener/shortener \
+-database-dsn='postgres://postgres:postgres@localhost:5432/shortener?sslmode=disable'

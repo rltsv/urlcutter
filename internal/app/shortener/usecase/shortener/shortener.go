@@ -34,6 +34,7 @@ func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.Creat
 
 func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLinkDTO) (longurl string, err error) {
 	link := entity.GetLink(dto)
+	fmt.Printf("%+v", link)
 	return u.storage.GetLink(ctx, link)
 }
 
