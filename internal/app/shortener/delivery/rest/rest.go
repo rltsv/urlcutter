@@ -119,7 +119,7 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 
 	links, err := hs.useCase.GetLinksByUser(ctx, dto)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusNoContent, gin.H{
 			"message": "there is no shortened links by this user",
 		})
 		log.Print(err)
@@ -134,7 +134,7 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusCreated)
+	c.Writer.WriteHeader(http.StatusOK)
 	c.Writer.Header().Set("content-type", "application/json")
 	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
 	c.Writer.Write(linksBytes)
