@@ -1,12 +1,13 @@
 package main
 
 import (
+	"log"
+	"net/http"
+
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/rest"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	shortenerStorage := repository.NewStorage(cfg)
 	shortenerUsecase := shortener.NewUsecase(*shortenerStorage, cfg)
 	handler := rest.NewHandlerShortener(*shortenerUsecase)

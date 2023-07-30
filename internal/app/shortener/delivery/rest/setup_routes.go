@@ -6,6 +6,7 @@ import (
 
 func SetupRouter(handler *HandlerShortener) *gin.Engine {
 	router := gin.Default()
+	router.Use(gzipHandler())
 
 	router.POST("/", handler.CreateShortLink)
 	router.POST("/api/shorten", handler.CreateShortLinkViaJSON)

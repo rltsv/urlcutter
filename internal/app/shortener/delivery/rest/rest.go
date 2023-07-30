@@ -2,13 +2,14 @@ package rest
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
-	"io"
-	"net/http"
-	"strconv"
 )
 
 type HandlerShortener struct {

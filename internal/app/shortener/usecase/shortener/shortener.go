@@ -3,6 +3,7 @@ package shortener
 import (
 	"context"
 	"fmt"
+
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 )
