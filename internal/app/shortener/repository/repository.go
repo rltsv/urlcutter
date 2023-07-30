@@ -3,20 +3,19 @@ package repository
 import (
 	"context"
 	"errors"
+
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
 var (
-	ErrLinkNotFound    = errors.New("link not found")
-	ErrRepositoryEmpty = errors.New("there are no any saved links")
+	ErrLinkAlreadyExist = errors.New("this link already shortened")
+	ErrLinkNotFound     = errors.New("link not found")
+	ErrUserIsNotFound   = errors.New("there is no any user in memory with this id")
 )
 
-type ShortenerRepo interface {
-	SaveLinkInMemoryStorage(ctx context.Context, longLink string) (id int)
-	GetLinkFromInMemoryStorage(ctx context.Context, id int) (longLink string, err error)
-	CheckLinkInMemoryStorage(ctx context.Context, longLink string) (id int, err error)
-
-	SaveLinkInFileStorage(ctx context.Context, longLink string) (id int)
-	GetLinkFromInFileStorage(ctx context.Context, id int) (link ValueToFile, err error)
-	CheckLinkInFileStorage(ctx context.Context, longLink string) (id int, err error)
+type Repository interface {
+	SaveLink(ctx context.Context, dto entity.Link) (userid, shorturl string, err error)
+	GetLink(ctx context.Context, dto entity.Link) (longurl string, err error)
+	GetLinksByUser(ctx context.Context, dto entity.Link) (links []entity.SendLinkDTO, err error)
+	Ping(ctx context.Context) error
 }
-

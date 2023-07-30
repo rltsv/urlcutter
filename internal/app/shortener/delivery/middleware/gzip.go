@@ -1,4 +1,4 @@
-package rest
+package middleware
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ func NewCustomRW(ctx *gin.Context) *CustomRW {
 	}
 }
 
-func gzipHandler() gin.HandlerFunc {
+func Gzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		NewCRW := NewCustomRW(c)
 		c.Writer = NewCRW

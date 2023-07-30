@@ -2,52 +2,89 @@ package repository
 
 import (
 	"context"
-	"strings"
+	"errors"
+	"log"
 	"sync"
 
 	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 )
 
-type Storage struct {
-	InMemoryStorage map[int]string
-	IDCount         int
-	Mux             *sync.RWMutex
-	AppConfig       config.Config
+type MemoryStorage struct {
+	Links     []entity.Link
+	Mux       *sync.RWMutex
+	AppConfig config.Config
 }
 
-func NewStorage(cfg config.Config) *Storage {
-	return &Storage{
-		InMemoryStorage: make(map[int]string),
-		IDCount:         0,
-		Mux:             new(sync.RWMutex),
-		AppConfig:       cfg,
-	}
-}
-func (l *Storage) SaveLinkInMemoryStorage(ctx context.Context, longLink string) (id int) {
-	l.Mux.Lock()
-	defer l.Mux.Unlock()
-	l.IDCount++
-	l.InMemoryStorage[l.IDCount] = longLink
-	return l.IDCount
-}
-
-func (l *Storage) GetLinkFromInMemoryStorage(ctx context.Context, id int) (longLink string, err error) {
-	l.Mux.RLock()
-	defer l.Mux.RUnlock()
-	if val, ok := l.InMemoryStorage[id]; !ok {
-		return "", ErrLinkNotFound
-	} else {
-		return val, nil
+func NewMemoryStorage(cfg config.Config) *MemoryStorage {
+	return &MemoryStorage{
+		Links:     make([]entity.Link, 0),
+		Mux:       new(sync.RWMutex),
+		AppConfig: cfg,
 	}
 }
 
-func (l *Storage) CheckLinkInMemoryStorage(ctx context.Context, longLink string) (id int, err error) {
-	l.Mux.RLock()
-	defer l.Mux.RUnlock()
-	for key, val := range l.InMemoryStorage {
-		if strings.EqualFold(val, longLink) {
-			return key, nil
+func (s *MemoryStorage) SaveLink(ctx context.Context, dto entity.Link) (userid, shorturl string, err error) {
+	s.Mux.Lock()
+	defer s.Mux.Unlock()
+
+	for _, val := range s.Links {
+		if val.UserID == dto.UserID && val.OriginalURL == dto.OriginalURL {
+			return val.UserID, val.ShortURL, ErrLinkAlreadyExist
 		}
 	}
-	return 0, ErrLinkNotFound
+
+	s.Links = append(s.Links, dto)
+	log.Println(s.Links)
+	return dto.UserID, dto.ShortURL, nil
+}
+
+func (s *MemoryStorage) GetLink(ctx context.Context, dto entity.Link) (longurl string, err error) {
+	s.Mux.RLock()
+	defer s.Mux.RUnlock()
+
+	if ok := s.CheckUserInMemory(dto); !ok {
+		return "", ErrUserIsNotFound
+	}
+	for _, val := range s.Links {
+		if val.LinkID == dto.LinkID && val.UserID == dto.UserID {
+			return val.OriginalURL, nil
+		}
+	}
+	return "", ErrLinkNotFound
+}
+
+func (s *MemoryStorage) GetLinksByUser(ctx context.Context, dto entity.Link) (links []entity.SendLinkDTO, err error) {
+	links = make([]entity.SendLinkDTO, 0)
+	if ok := s.CheckUserInMemory(dto); !ok {
+		return nil, ErrUserIsNotFound
+	} else {
+		for _, val := range s.Links {
+			if val.UserID == dto.UserID {
+				link := entity.SendLinkDTO{
+					ShortURL:    val.ShortURL,
+					OriginalURL: val.OriginalURL,
+				}
+				links = append(links, link)
+			}
+		}
+	}
+	return links, nil
+}
+
+// CheckUserInMemory check are user in already in memory or not
+func (s *MemoryStorage) CheckUserInMemory(dto entity.Link) (ok bool) {
+	if dto.UserID == "" {
+		return false
+	}
+	for _, val := range s.Links {
+		if val.UserID == dto.UserID {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *MemoryStorage) Ping(ctx context.Context) error {
+	return errors.New("there is no management system for db in this configuration")
 }

@@ -1,12 +1,16 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
+	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/middleware"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
@@ -23,77 +27,170 @@ func NewHandlerShortener(shortenerUseCase shortener.UsecaseShortener) *HandlerSh
 }
 
 func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
-
 	ctx := c.Request.Context()
+	var dto entity.CreateLinkDTO
 
-	respBody, err := io.ReadAll(c.Request.Body)
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
+	rawBody, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while read request body",
+			"error":   err.Error(),
+		})
 		return
 	}
-	defer c.Request.Body.Close()
+	// format raw data from request body to string type and assign it to dto field
+	dto.OriginalURL = string(rawBody)
 
-	if len(respBody) == 0 {
-		c.AbortWithStatus(http.StatusBadRequest)
+	userid, shortLink, err := hs.useCase.CreateShortLink(ctx, dto)
+	if err != nil && err == repository.ErrLinkAlreadyExist {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "this link already shortened",
+		})
 		return
 	}
 
-	shortLink := hs.useCase.CreateShortLink(ctx, string(respBody))
 	c.Writer.WriteHeader(http.StatusCreated)
-	_, err = c.Writer.Write([]byte(shortLink))
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.Writer.Write([]byte(shortLink))
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
+	var dto entity.CreateLinkDTO
 
-	rawValue, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-	defer c.Request.Body.Close()
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
 
-	ValueIn := &entity.InputData{}
-	var shortLink string
-
-	if err := json.Unmarshal(rawValue, &ValueIn); err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+	if err := c.BindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	shortLink = hs.useCase.CreateShortLink(ctx, ValueIn.URL)
-
-	ValueOut := entity.OutputData{
-		Response: shortLink,
+	userid, shortlink, err := hs.useCase.CreateShortLink(ctx, dto)
+	if err != nil && err == repository.ErrLinkAlreadyExist {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "this link already shortened",
+		})
+		return
 	}
 
-	rawShortLink, err := json.Marshal(ValueOut)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
-
-	c.Writer.Header().Set("content-type", "application/json")
 	c.Writer.WriteHeader(http.StatusCreated)
-	_, err = c.Writer.Write(rawShortLink)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-	}
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.Writer.Write([]byte(shortlink))
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
+	ctx := c.Request.Context()
+	var dto entity.GetLinkDTO
 
+	dto.UserID = c.Request.Context().Value(middleware.CookieKey).(string)
+
+	dto.LinkID = c.Param("id")
+	if dto.LinkID == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "check id path of url",
+		})
+	}
+
+	log.Printf("%+v", dto)
+
+	longLink, err := hs.useCase.GetLinkByUserID(ctx, dto)
+	if err != nil && err == repository.ErrLinkNotFound {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "there is no any link by this id",
+		})
+		log.Print(err.Error())
+	} else if err != nil && err == repository.ErrUserIsNotFound {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "there is no shortened links by this user",
+		})
+		log.Print(err.Error())
+	} else {
+		c.Redirect(http.StatusTemporaryRedirect, longLink)
+	}
+}
+
+func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
+	ctx := c.Request.Context()
+	dto := entity.GetAllLinksDTO{}
+
+	userid := c.Request.Context().Value(middleware.CookieKey).(string)
+	dto.UserID = userid
+
+	links, err := hs.useCase.GetLinksByUser(ctx, dto)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusNoContent, gin.H{
+			"message": "there is no shortened links by this user",
+		})
+		log.Print(err)
+		return
+	}
+
+	linksBytes, err := json.Marshal(&links)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while marshal string",
+		})
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusOK)
+	c.Writer.Header().Set("content-type", "application/json")
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.Writer.Write(linksBytes)
+}
+
+func (hs *HandlerShortener) Ping(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Second*10)
+	defer cancel()
+
+	err := hs.useCase.Ping(ctx)
+	if err != nil && err.Error() == "there is no management system for db in this configuration" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while pinging database",
+			"error":   err.Error(),
+		})
+		return
+	} else if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "failed while pinging database",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusOK)
+}
+
+func (hs *HandlerShortener) BatchShortener(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	id, _ := strconv.Atoi(c.Param("id"))
+	var request []entity.CreateLinkDTO
 
-	origLink, err := hs.useCase.GetLinkByID(ctx, id)
-	if err != nil && err == repository.ErrLinkNotFound {
-		c.AbortWithError(http.StatusBadRequest, err)
-	} else {
-		c.Redirect(http.StatusTemporaryRedirect, origLink)
+	err := c.Bind(&request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while parse request body",
+			"error":   err.Error(),
+		})
+		log.Println(err)
+		return
 	}
+
+	userid := c.Request.Context().Value(middleware.CookieKey).(string)
+
+	for idx := range request {
+		request[idx].UserID = userid
+	}
+
+	listOfShortUrls, err := hs.useCase.BatchShortener(ctx, request)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.JSON(http.StatusCreated, listOfShortUrls)
 }
