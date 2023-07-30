@@ -2,15 +2,16 @@ package rest
 
 import (
 	"bytes"
-	"github.com/rltsv/urlcutter/internal/app/config"
-	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
-	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
+	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHandlerShortener_HeadHandlerPost(t *testing.T) {
