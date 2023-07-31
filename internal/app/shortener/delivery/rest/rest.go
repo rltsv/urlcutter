@@ -2,11 +2,13 @@ package rest
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rltsv/urlcutter/internal/app/shortener/auth"
+	"github.com/rltsv/urlcutter/internal/app/shortener/delivery/middleware"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 	"github.com/rltsv/urlcutter/internal/app/shortener/usecase/shortener"
@@ -26,9 +28,15 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	dto.UserID = c.Request.Context().Value(middleware.ContextKey).(string)
+
+	if rawBody, err := io.ReadAll(c.Request.Body); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while read request body",
+		})
 		return
+	} else {
+		dto.LongURL = string(rawBody)
 	}
 
 	userid, shortLink, err := hs.useCase.CreateShortLink(ctx, dto)
@@ -38,27 +46,32 @@ func (hs *HandlerShortener) CreateShortLink(c *gin.Context) {
 		})
 		return
 	}
-	shortLinkBytes, err := json.Marshal(shortLink)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while marshal string",
-		})
-		return
-	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
-	c.Writer.Header().Set("content-type", "application/json")
-	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
-	c.Writer.Write(shortLinkBytes)
+	c.Writer.Header().Set("content-type", "text/html")
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "/", "", false, false)
+	c.Writer.Write([]byte(shortLink))
 }
 
 func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 	ctx := c.Request.Context()
 	var dto entity.CreateLinkDTO
 
-	if err := c.ShouldBindJSON(&dto); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	dto.UserID = c.Request.Context().Value(middleware.ContextKey).(string)
+
+	if rawBody, err := io.ReadAll(c.Request.Body); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "failed while read request body",
+		})
 		return
+	} else {
+		if err = json.Unmarshal(rawBody, &dto); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "failed while unmarshal data",
+			})
+			log.Print(err)
+			return
+		}
 	}
 
 	userid, shortlink, err := hs.useCase.CreateShortLink(ctx, dto)
@@ -66,45 +79,29 @@ func (hs *HandlerShortener) CreateShortLinkViaJSON(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "link already shortened",
 		})
-		return
-	}
-
-	shortLinkBytes, err := json.Marshal(shortlink)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while marshal string",
-		})
+		log.Print(err)
 		return
 	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
-	c.Writer.Header().Set("content-type", "application/json")
-	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
-	c.Writer.Write(shortLinkBytes)
+	c.Writer.Header().Set("content-type", "text/html")
+	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "/", "", false, false)
+	c.Writer.Write([]byte(shortlink))
 }
 
 func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 	ctx := c.Request.Context()
+	dto := entity.GetLinkDTO{}
 
-	cookie, err := c.Request.Cookie("token")
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "failed while grab cookie from request",
-		})
-		return
-	}
+	dto.UserID = c.Request.Context().Value(middleware.ContextKey).(string)
 
-	userID := auth.DecryptToken(cookie)
 	linkID := c.Param("id")
 	if linkID == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "check id path of url",
 		})
-	}
-
-	dto := entity.GetLinkDTO{
-		UserID: userID,
-		LinkID: linkID,
+	} else {
+		dto.LinkID = linkID
 	}
 
 	longLink, err := hs.useCase.GetLinkByUserID(ctx, dto)
@@ -125,23 +122,10 @@ func (hs *HandlerShortener) GetLinkByID(c *gin.Context) {
 
 func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 	ctx := c.Request.Context()
+	dto := entity.GetAllLinksDTO{}
 
-	cookie, err := c.Request.Cookie("token")
-	if err != nil {
-		switch err {
-		case http.ErrNoCookie:
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"message": "there is no shortened links by this user",
-			})
-			return
-		default:
-			c.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-	}
-	userid := auth.DecryptToken(cookie)
+	dto.UserID = c.Request.Context().Value(middleware.ContextKey).(string)
 
-	dto := entity.GetAllLinksDTO{UserID: userid}
 	links, err := hs.useCase.GetLinksByUser(ctx, dto)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -155,6 +139,6 @@ func (hs *HandlerShortener) GetLinksByUser(c *gin.Context) {
 
 	c.Writer.WriteHeader(http.StatusCreated)
 	c.Writer.Header().Set("content-type", "application/json")
-	c.SetCookie("token", string(auth.CreateToken(userid)), 3600, "", "", false, false)
+	c.SetCookie("token", string(auth.CreateToken(dto.UserID)), 3600, "/", "", false, false)
 	c.Writer.Write(linksBytes)
 }

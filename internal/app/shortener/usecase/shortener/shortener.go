@@ -2,6 +2,8 @@ package shortener
 
 import (
 	"context"
+	"log"
+
 	"github.com/rltsv/urlcutter/internal/app/config"
 	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
@@ -45,6 +47,7 @@ func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLi
 
 func (u *UsecaseShortener) GetLinksByUser(ctx context.Context, dto entity.GetAllLinksDTO) (links []entity.SendLinkDTO, err error) {
 	user := entity.GetAllLinks(dto)
+	log.Println(user)
 	switch {
 	case u.appConfig.FileStoragePath == "":
 		return u.memoryStorage.GetLinksByUser(ctx, user)
