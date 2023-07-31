@@ -2,65 +2,57 @@ package shortener
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"github.com/rltsv/urlcutter/internal/app/config"
+	"github.com/rltsv/urlcutter/internal/app/shortener/entity"
 	"github.com/rltsv/urlcutter/internal/app/shortener/repository"
 )
 
 type UsecaseShortener struct {
-	storage   repository.ShortenerRepo
-	appConfig config.Config
+	memoryStorage repository.MemoryRepository
+	fileStorage   repository.FileRepository
+	appConfig     config.Config
 }
 
-func NewUsecase(localstorage repository.Storage, cfg config.Config) *UsecaseShortener {
+func NewUsecase(memorystorage repository.MemoryRepository, filestorage repository.FileRepository, cfg config.Config) *UsecaseShortener {
 	return &UsecaseShortener{
-		storage:   &localstorage,
-		appConfig: cfg,
+		memoryStorage: memorystorage,
+		fileStorage:   filestorage,
+		appConfig:     cfg,
 	}
 }
 
-func (u *UsecaseShortener) CreateShortLink(ctx context.Context, longLink string) (link string) {
-
+func (u *UsecaseShortener) CreateShortLink(ctx context.Context, dto entity.CreateLinkDTO) (userid, shorturl string, err error) {
+	link := entity.NewLink(dto)
 	switch {
 	case u.appConfig.FileStoragePath == "":
-		id, err := u.storage.CheckLinkInMemoryStorage(ctx, longLink)
-		if err != nil {
-			id = u.storage.SaveLinkInMemoryStorage(ctx, longLink)
-			shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-			return shortLink
-		} else {
-			shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-			return shortLink
-		}
-
+		return u.memoryStorage.SaveLinkInMemoryStorage(ctx, link)
 	case u.appConfig.FileStoragePath != "":
-		id, err := u.storage.CheckLinkInFileStorage(ctx, longLink)
-		if err != nil {
-			id = u.storage.SaveLinkInFileStorage(ctx, longLink)
-			shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-			return shortLink
-		} else {
-			shortLink := fmt.Sprintf("%s/%d", u.appConfig.BaseURL, id)
-			return shortLink
-		}
+		return u.fileStorage.SaveLinkInFileStorage(ctx, link)
 	}
 	return
 }
 
-func (u *UsecaseShortener) GetLinkByID(ctx context.Context, id int) (string, error) {
-
-	if u.appConfig.FileStoragePath == "" {
-		origLink, err := u.storage.GetLinkFromInMemoryStorage(ctx, id)
-		if err == repository.ErrLinkNotFound {
-			return "", err
-		}
-		return origLink, nil
-	} else {
-		origLink, err := u.storage.GetLinkFromInFileStorage(ctx, id)
-		if err == repository.ErrLinkNotFound {
-			return "", err
-		}
-		return origLink.LongLink, nil
+func (u *UsecaseShortener) GetLinkByUserID(ctx context.Context, dto entity.GetLinkDTO) (longurl string, err error) {
+	link := entity.GetLink(dto)
+	switch {
+	case u.appConfig.FileStoragePath == "":
+		return u.memoryStorage.GetLinkFromInMemoryStorage(ctx, link)
+	case u.appConfig.FileStoragePath != "":
+		return u.fileStorage.GetLinkFromFileStorage(ctx, link)
 	}
+	return longurl, err
+}
+
+func (u *UsecaseShortener) GetLinksByUser(ctx context.Context, dto entity.GetAllLinksDTO) (links []entity.SendLinkDTO, err error) {
+	user := entity.GetAllLinks(dto)
+	log.Println(user)
+	switch {
+	case u.appConfig.FileStoragePath == "":
+		return u.memoryStorage.GetLinksByUser(ctx, user)
+	case u.appConfig.FileStoragePath != "":
+		return u.fileStorage.GetLinksByUser(ctx, user)
+	}
+	return links, nil
 }
